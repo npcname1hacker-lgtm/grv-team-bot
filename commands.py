@@ -9,6 +9,8 @@ import asyncio
 import random
 import time
 import logging
+from models import DatabaseManager
+from application_system import ApplicationListView
 
 def setup_commands(bot):
     """設置所有機器人指令"""
@@ -274,6 +276,232 @@ def setup_commands(bot):
             ]
             embed.add_field(name="🔧 實用指令", value="\n".join(utility_commands), inline=False)
             
+            # 戰隊管理指令
+            admin_commands = [
+                "`!申請` - 查看待審核申請 (管理員)",
+                "`!kick <成員> [原因]` - 踢出成員",
+                "`!ban <成員> [原因]` - 封鎖成員",
+                "`!timeout <成員> [分鐘] [原因]` - 禁言成員",
+                "`!untimeout <成員>` - 解除禁言"
+            ]
+            embed.add_field(name="⚔️ 戰隊管理", value="\n".join(admin_commands), inline=False)
+            
             embed.set_footer(text="使用 !help <指令名稱> 獲取特定指令的詳細資訊")
             
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='申請', aliases=['applications'])
+    @commands.has_permissions(manage_guild=True)
+    async def applications_command(ctx):
+        """查看所有待審核申請（管理員專用）"""
+        db = DatabaseManager()
+        applications = db.get_pending_applications()
+        
+        if not applications:
+            embed = discord.Embed(
+                title="📋 申請列表",
+                description="目前沒有待審核的申請",
+                color=0x0099ff
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # 創建申請列表視圖
+        view = ApplicationListView(applications, db, bot)
+        embed = view.create_list_embed()
+        
+        await ctx.send(embed=embed, view=view)
+    
+    @bot.command(name='kick', aliases=['踢'])
+    @commands.has_permissions(kick_members=True)
+    async def kick_command(ctx, member: discord.Member, *, reason="未提供原因"):
+        """踢出成員"""
+        if member == ctx.author:
+            embed = discord.Embed(
+                title="❌ 無法執行",
+                description="您不能踢出自己",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        if member.top_role >= ctx.author.top_role:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="您無法踢出權限等於或高於您的成員",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        try:
+            # 私信通知被踢者
+            try:
+                embed_dm = discord.Embed(
+                    title="⚠️ 您已被踢出戰隊",
+                    description=f"您已被踢出 **{ctx.guild.name}** 戰隊\n\n**原因:** {reason}\n\n如有疑問，請聯繫戰隊管理員",
+                    color=0xff0000
+                )
+                await member.send(embed=embed_dm)
+            except:
+                pass
+            
+            # 執行踢出
+            await member.kick(reason=reason)
+            
+            # 確認訊息
+            embed = discord.Embed(
+                title="✅ 成員已踢出",
+                description=f"**被踢出成員:** {member.mention}\n**執行者:** {ctx.author.mention}\n**原因:** {reason}",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="機器人沒有踢出成員的權限",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='ban', aliases=['封鎖'])
+    @commands.has_permissions(ban_members=True)
+    async def ban_command(ctx, member: discord.Member, *, reason="未提供原因"):
+        """封鎖成員"""
+        if member == ctx.author:
+            embed = discord.Embed(
+                title="❌ 無法執行",
+                description="您不能封鎖自己",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        if member.top_role >= ctx.author.top_role:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="您無法封鎖權限等於或高於您的成員",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        try:
+            # 私信通知被封鎖者
+            try:
+                embed_dm = discord.Embed(
+                    title="🚫 您已被封鎖",
+                    description=f"您已被封鎖於 **{ctx.guild.name}** 戰隊\n\n**原因:** {reason}",
+                    color=0xff0000
+                )
+                await member.send(embed=embed_dm)
+            except:
+                pass
+            
+            # 執行封鎖
+            await member.ban(reason=reason)
+            
+            # 確認訊息
+            embed = discord.Embed(
+                title="🚫 成員已封鎖",
+                description=f"**被封鎖成員:** {member.mention}\n**執行者:** {ctx.author.mention}\n**原因:** {reason}",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="機器人沒有封鎖成員的權限",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='timeout', aliases=['禁言'])
+    @commands.has_permissions(moderate_members=True)
+    async def timeout_command(ctx, member: discord.Member, minutes: int = 10, *, reason="未提供原因"):
+        """禁言成員"""
+        if member == ctx.author:
+            embed = discord.Embed(
+                title="❌ 無法執行",
+                description="您不能禁言自己",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        if member.top_role >= ctx.author.top_role:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="您無法禁言權限等於或高於您的成員",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        if minutes <= 0 or minutes > 40320:  # Discord最大禁言時間28天
+            embed = discord.Embed(
+                title="❌ 無效時間",
+                description="禁言時間必須在1-40320分鐘之間（最多28天）",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        try:
+            # 計算禁言結束時間
+            from datetime import timedelta
+            timeout_until = discord.utils.utcnow() + timedelta(minutes=minutes)
+            
+            # 執行禁言
+            await member.timeout(timeout_until, reason=reason)
+            
+            # 私信通知被禁言者
+            try:
+                embed_dm = discord.Embed(
+                    title="🔇 您已被禁言",
+                    description=f"您在 **{ctx.guild.name}** 戰隊被禁言 {minutes} 分鐘\n\n**原因:** {reason}",
+                    color=0xffaa00
+                )
+                await member.send(embed=embed_dm)
+            except:
+                pass
+            
+            # 確認訊息
+            embed = discord.Embed(
+                title="🔇 成員已禁言",
+                description=f"**被禁言成員:** {member.mention}\n**禁言時長:** {minutes} 分鐘\n**執行者:** {ctx.author.mention}\n**原因:** {reason}",
+                color=0xffaa00
+            )
+            await ctx.send(embed=embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="機器人沒有禁言成員的權限",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='untimeout', aliases=['解除禁言'])
+    @commands.has_permissions(moderate_members=True)
+    async def untimeout_command(ctx, member: discord.Member):
+        """解除禁言"""
+        try:
+            await member.timeout(None)
+            
+            embed = discord.Embed(
+                title="✅ 禁言已解除",
+                description=f"**成員:** {member.mention}\n**執行者:** {ctx.author.mention}",
+                color=0x00ff00
+            )
+            await ctx.send(embed=embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ 權限不足",
+                description="機器人沒有解除禁言的權限",
+                color=0xff0000
+            )
             await ctx.send(embed=embed)

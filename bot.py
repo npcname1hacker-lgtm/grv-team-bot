@@ -9,6 +9,7 @@ import logging
 import os
 from config import Config
 from commands import setup_commands
+from application_system import setup_application_system
 
 class DiscordBot:
     def __init__(self):
@@ -34,6 +35,9 @@ class DiscordBot:
         
         # 設置指令
         setup_commands(self.bot)
+        
+        # 設置申請系統
+        setup_application_system(self.bot)
     
     def setup_events(self):
         """設置機器人事件處理器"""
