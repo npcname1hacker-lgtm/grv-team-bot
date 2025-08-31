@@ -279,6 +279,8 @@ def setup_commands(bot):
             # 戰隊管理指令
             admin_commands = [
                 "`!申請` - 查看待審核申請 (管理員)",
+                "`!檢查成員` - 檢查未申請的成員",
+                "`!要求申請 @成員` - 要求成員補交申請",
                 "`!kick <成員> [原因]` - 踢出成員",
                 "`!ban <成員> [原因]` - 封鎖成員",
                 "`!timeout <成員> [分鐘] [原因]` - 禁言成員",
@@ -502,6 +504,113 @@ def setup_commands(bot):
             embed = discord.Embed(
                 title="❌ 權限不足",
                 description="機器人沒有解除禁言的權限",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='檢查成員', aliases=['check_members'])
+    @commands.has_permissions(manage_guild=True)
+    async def check_members_command(ctx):
+        """檢查伺服器中未申請的成員"""
+        db = DatabaseManager()
+        
+        # 獲取所有已申請的用戶ID
+        session = db.get_session()
+        try:
+            approved_users = session.query(TeamApplication).filter_by(status='approved').all()
+            approved_user_ids = set(app.user_id for app in approved_users)
+        finally:
+            session.close()
+        
+        # 檢查伺服器成員
+        unchecked_members = []
+        for member in ctx.guild.members:
+            if (not member.bot and  # 不是機器人
+                str(member.id) not in approved_user_ids and  # 沒有通過申請
+                member != ctx.guild.owner):  # 不是伺服器擁有者
+                unchecked_members.append(member)
+        
+        if not unchecked_members:
+            embed = discord.Embed(
+                title="✅ 檢查完成",
+                description="所有成員都已通過申請流程",
+                color=0x00ff00
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # 顯示未申請的成員
+        embed = discord.Embed(
+            title="⚠️ 未通過申請的成員",
+            description=f"發現 {len(unchecked_members)} 位成員尚未完成申請流程：",
+            color=0xffaa00
+        )
+        
+        member_list = []
+        for member in unchecked_members[:10]:  # 最多顯示10個
+            member_list.append(f"• {member.display_name} ({member.mention})")
+        
+        embed.add_field(name="成員列表", value="\n".join(member_list), inline=False)
+        
+        if len(unchecked_members) > 10:
+            embed.add_field(name="注意", value=f"還有 {len(unchecked_members) - 10} 位成員未顯示", inline=False)
+        
+        embed.add_field(name="建議操作", value="使用 `!要求申請 @成員` 要求特定成員補交申請", inline=False)
+        
+        await ctx.send(embed=embed)
+    
+    @bot.command(name='要求申請', aliases=['require_application'])
+    @commands.has_permissions(manage_guild=True)
+    async def require_application_command(ctx, member: discord.Member):
+        """要求特定成員補交申請"""
+        # 檢查該成員是否已有申請記錄
+        db = DatabaseManager()
+        session = db.get_session()
+        try:
+            existing_app = session.query(TeamApplication).filter_by(user_id=str(member.id)).first()
+            if existing_app and existing_app.status == 'approved':
+                embed = discord.Embed(
+                    title="ℹ️ 成員已申請",
+                    description=f"{member.display_name} 已經通過申請審核",
+                    color=0x0099ff
+                )
+                await ctx.send(embed=embed)
+                return
+        finally:
+            session.close()
+        
+        # 發送申請表單給該成員
+        from application_system import ApplicationView
+        
+        embed = discord.Embed(
+            title="📋 補交戰隊申請",
+            description=f"Hi {member.display_name}！\n\n管理員要求您補交戰隊申請表。為了維護戰隊品質，請完成申請流程：",
+            color=0xffaa00
+        )
+        embed.add_field(
+            name="📋 申請流程",
+            value="1️⃣ 填寫遊戲ID\n2️⃣ 上傳個人檔案照片（最多5張）\n3️⃣ 等待管理員審核",
+            inline=False
+        )
+        embed.set_footer(text="請儘快完成申請，感謝配合！")
+        
+        view = ApplicationView(bot)
+        
+        try:
+            await member.send(embed=embed, view=view)
+            
+            # 確認訊息
+            confirm_embed = discord.Embed(
+                title="✅ 申請要求已發送",
+                description=f"已向 {member.mention} 發送申請表單",
+                color=0x00ff00
+            )
+            await ctx.send(embed=confirm_embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ 無法發送私信",
+                description=f"無法向 {member.mention} 發送私信，請手動通知該成員",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
