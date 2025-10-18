@@ -24,8 +24,21 @@
                         <label for="email" class="form-label">
                             <i class="fas fa-envelope"></i> 電子郵件 <span class="text-danger">*</span>
                         </label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+                        <div class="input-group">
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <button type="button" class="btn btn-outline-primary" id="sendCodeBtn" onclick="sendVerificationCode()">
+                                <i class="fas fa-paper-plane"></i> 發送驗證碼
+                            </button>
+                        </div>
                         <small class="text-muted">用於帳號驗證和密碼重置</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="verification_code" class="form-label">
+                            <i class="fas fa-key"></i> 驗證碼 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="verification_code" name="verification_code" required maxlength="6" placeholder="請輸入6位數驗證碼">
+                        <small class="text-muted">請查收郵件中的驗證碼（10分鐘內有效）</small>
                     </div>
                     
                     <div class="mb-3">
@@ -74,10 +87,88 @@
 </div>
 
 <script>
+let countdown = 0;
+let countdownTimer = null;
+
+// 發送驗證碼
+async function sendVerificationCode() {
+    const email = document.getElementById('email').value;
+    
+    if (!email) {
+        alert('請先輸入電子郵件地址');
+        return;
+    }
+    
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        alert('請輸入有效的電子郵件地址');
+        return;
+    }
+    
+    if (countdown > 0) {
+        alert(`請等待 ${countdown} 秒後再重新發送`);
+        return;
+    }
+    
+    const btn = document.getElementById('sendCodeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 發送中...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'send_code');
+        formData.append('email', email);
+        
+        const response = await fetch('/register', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            
+            // 開始倒數計時（60秒）
+            countdown = 60;
+            updateCountdown();
+            countdownTimer = setInterval(function() {
+                countdown--;
+                if (countdown <= 0) {
+                    clearInterval(countdownTimer);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> 重新發送';
+                } else {
+                    updateCountdown();
+                }
+            }, 1000);
+        } else {
+            alert('❌ ' + (data.error || data.message));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> 發送驗證碼';
+        }
+    } catch (error) {
+        alert('發送失敗：' + error.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> 發送驗證碼';
+    }
+}
+
+function updateCountdown() {
+    const btn = document.getElementById('sendCodeBtn');
+    btn.innerHTML = `<i class="fas fa-clock"></i> ${countdown}秒後可重發`;
+}
+
 // 密碼確認驗證
 document.querySelector('form').addEventListener('submit', function(e) {
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
+    const verificationCode = document.getElementById('verification_code').value;
+    
+    if (!verificationCode || verificationCode.length !== 6) {
+        e.preventDefault();
+        alert('請輸入6位數驗證碼');
+        return false;
+    }
     
     if (password !== confirmPassword) {
         e.preventDefault();

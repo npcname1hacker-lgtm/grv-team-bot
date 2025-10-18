@@ -38,13 +38,18 @@ function showNotification(message, type = 'info') {
     `;
     
     const container = document.querySelector('main .container');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    // 5秒後自動隱藏
-    setTimeout(() => {
-        alertDiv.classList.remove('show');
-        setTimeout(() => alertDiv.remove(), 150);
-    }, 5000);
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // 5秒後自動隱藏
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 150);
+        }, 5000);
+    } else {
+        // 如果找不到容器，使用alert
+        alert(message);
+    }
 }
 
 // 確認對話框

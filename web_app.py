@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 from web_models import WebDatabaseManager, WebUser, UserRole, BotCommand
 from models import DatabaseManager, TeamApplication
+from email_service import email_service
 
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')
@@ -100,15 +101,36 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """註冊頁面 - 只需要電子郵件，不需要電話"""
+    """註冊頁面 - 使用電子郵件驗證碼註冊"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
+        action = request.form.get('action')
+        
+        # 步驟1: 發送驗證碼
+        if action == 'send_code':
+            email = request.form.get('email')
+            
+            # 檢查郵箱是否已被使用
+            session = web_db.get_session()
+            try:
+                existing_email = session.query(WebUser).filter_by(email=email).first()
+                if existing_email:
+                    return jsonify({'success': False, 'error': '此電子郵件已被註冊'})
+            finally:
+                session.close()
+            
+            # 發送驗證碼
+            success, message = email_service.send_verification_email(email, '註冊新帳號')
+            return jsonify({'success': success, 'message': message})
+        
+        # 步驟2: 完成註冊
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
+        verification_code = request.form['verification_code']
         discord_id = request.form.get('discord_id', '')
         
         # 驗證密碼
@@ -116,21 +138,17 @@ def register():
             flash('兩次輸入的密碼不一致', 'error')
             return render_template('register.html')
         
+        # 驗證驗證碼
+        code_valid, message = email_service.verify_code(email, verification_code)
+        if not code_valid:
+            flash(f'驗證碼錯誤：{message}', 'error')
+            return render_template('register.html')
+        
         # 檢查用戶名是否已存在
         existing_user = web_db.get_user_by_username(username)
         if existing_user:
             flash('用戶名已被使用，請選擇其他用戶名', 'error')
             return render_template('register.html')
-        
-        # 檢查郵箱是否已被使用
-        session = web_db.get_session()
-        try:
-            existing_email = session.query(WebUser).filter_by(email=email).first()
-            if existing_email:
-                flash('此電子郵件已被註冊', 'error')
-                return render_template('register.html')
-        finally:
-            session.close()
         
         # 創建新用戶（預設為LOW權限，需要隊長審核）
         try:

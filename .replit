@@ -2,12 +2,7 @@ modules = ["python-3.11", "nodejs-20", "postgresql-16"]
 
 [agent]
 expertMode = true
-integrations = [
-  "javascript_auth_all_persistance==1.0.0",
-  "twilio_send_message==1.0.0",
-  "javascript_sendgrid==1.0.0",
-  "python_database==1.0.0"
-]
+integrations = ["javascript_auth_all_persistance:1.0.0", "twilio_send_message:1.0.0", "javascript_sendgrid:1.0.0", "python_database:1.0.0", "resend:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
