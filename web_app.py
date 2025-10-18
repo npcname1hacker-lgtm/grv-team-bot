@@ -98,6 +98,70 @@ def login():
     
     return render_template('login.html')
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """註冊頁面 - 只需要電子郵件，不需要電話"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        discord_id = request.form.get('discord_id', '')
+        
+        # 驗證密碼
+        if password != confirm_password:
+            flash('兩次輸入的密碼不一致', 'error')
+            return render_template('register.html')
+        
+        # 檢查用戶名是否已存在
+        existing_user = web_db.get_user_by_username(username)
+        if existing_user:
+            flash('用戶名已被使用，請選擇其他用戶名', 'error')
+            return render_template('register.html')
+        
+        # 檢查郵箱是否已被使用
+        session = web_db.get_session()
+        try:
+            existing_email = session.query(WebUser).filter_by(email=email).first()
+            if existing_email:
+                flash('此電子郵件已被註冊', 'error')
+                return render_template('register.html')
+        finally:
+            session.close()
+        
+        # 創建新用戶（預設為LOW權限，需要隊長審核）
+        try:
+            user_id = web_db.create_user(
+                username=username,
+                password=password,
+                role=UserRole.LOW,  # 新用戶預設受限，需要隊長提升權限
+                created_by='self_register',
+                email=email
+            )
+            
+            # 如果提供了Discord ID，更新它
+            if discord_id:
+                session = web_db.get_session()
+                try:
+                    user = session.query(WebUser).filter_by(id=user_id).first()
+                    if user:
+                        user.discord_id = discord_id
+                        session.commit()
+                finally:
+                    session.close()
+            
+            flash('註冊成功！您的帳號需要隊長審核後才能使用完整功能。請聯繫隊長申請權限提升。', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            flash(f'註冊失敗：{str(e)}', 'error')
+            return render_template('register.html')
+    
+    return render_template('register.html')
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -119,9 +183,9 @@ def dashboard():
     
     # 獲取機器人狀態
     bot_status = {
-        'online': discord_bot_instance is not None and not discord_bot_instance.is_closed() if discord_bot_instance else False,
-        'guild_count': len(discord_bot_instance.guilds) if discord_bot_instance and discord_bot_instance.guilds else 0,
-        'member_count': sum(guild.member_count for guild in discord_bot_instance.guilds) if discord_bot_instance and discord_bot_instance.guilds else 0
+        'online': discord_bot_instance is not None and hasattr(discord_bot_instance, 'bot') and not discord_bot_instance.bot.is_closed() if discord_bot_instance else False,
+        'guild_count': len(discord_bot_instance.bot.guilds) if discord_bot_instance and hasattr(discord_bot_instance, 'bot') and discord_bot_instance.bot.guilds else 0,
+        'member_count': sum(guild.member_count for guild in discord_bot_instance.bot.guilds) if discord_bot_instance and hasattr(discord_bot_instance, 'bot') and discord_bot_instance.bot.guilds else 0
     }
     
     return render_template('dashboard.html', 
@@ -191,7 +255,7 @@ def bot_control():
 @login_required
 def bot_status():
     """獲取機器人狀態API"""
-    if not discord_bot_instance:
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
         return jsonify({
             'online': False,
             'latency': 0,
@@ -213,7 +277,7 @@ def bot_channels():
     if current_user.role == UserRole.LOW:
         return jsonify({'error': '權限不足'}), 403
     
-    if not discord_bot_instance or discord_bot_instance.bot.is_closed():
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot') or discord_bot_instance.bot.is_closed():
         return jsonify({'error': '機器人未連接'}), 503
     
     channels = []
@@ -241,7 +305,7 @@ def bot_say():
     if not message:
         return jsonify({'error': '消息不能為空'}), 400
     
-    if not discord_bot_instance or discord_bot_instance.bot.is_closed():
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot') or discord_bot_instance.bot.is_closed():
         return jsonify({'error': '機器人未連接'}), 503
     
     # 在機器人線程中執行發送消息
