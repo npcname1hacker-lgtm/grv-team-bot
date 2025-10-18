@@ -63,14 +63,26 @@ async def main():
         await asyncio.sleep(2)
         logger.info("Flask網站控制面板已啟動 -> http://0.0.0.0:5000")
         
-        # 在主線程中運行Discord機器人
-        await run_discord_bot()
+        # 嘗試啟動Discord機器人
+        try:
+            await run_discord_bot()
+        except Exception as bot_error:
+            logger.warning(f"Discord機器人啟動失敗: {bot_error}")
+            logger.info("網站控制面板仍在運行，請訪問 http://0.0.0.0:5000")
+            logger.info("請更新Discord機器人token以啟用機器人功能")
+            
+            # 保持Flask運行
+            while True:
+                await asyncio.sleep(60)
         
     except KeyboardInterrupt:
         logger.info("收到中斷信號，正在關閉系統...")
     except Exception as e:
         logger.error(f"系統運行錯誤: {e}")
-        raise
+        # 不要拋出異常，讓Flask繼續運行
+        logger.info("Flask網站仍在運行...")
+        while True:
+            await asyncio.sleep(60)
     finally:
         logger.info("=== ɢʀᴠ戰隊管理系統已關閉 ===")
 
