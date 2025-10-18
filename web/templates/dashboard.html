@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}儀表板 - ɢʀᴠ戰隊管理系統{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="fas fa-tachometer-alt"></i> 戰隊管理儀表板</h2>
+        <p class="text-muted">歡迎回來，{{ current_user.username }}！</p>
+    </div>
+</div>
+
+<!-- 狀態卡片 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-header">
+                <i class="fas fa-robot"></i> 機器人狀態
+            </div>
+            <div class="card-body">
+                <h4>{{ '🟢 在線' if bot_status.online else '🔴 離線' }}</h4>
+                <small>伺服器: {{ bot_status.guild_count }} | 成員: {{ bot_status.member_count }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-white bg-warning">
+            <div class="card-header">
+                <i class="fas fa-clipboard-list"></i> 待審核申請
+            </div>
+            <div class="card-body">
+                <h4>{{ pending_applications }}</h4>
+                <small>份申請等待處理</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-header">
+                <i class="fas fa-crown"></i> 您的權限
+            </div>
+            <div class="card-body">
+                <h4>{{ current_user.get_role_display() }}</h4>
+                <small>當前權限等級</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-clipboard-check"></i> 申請管理</h5>
+            </div>
+            <div class="card-body">
+                <p>查看和處理戰隊加入申請</p>
+                <a href="{{ url_for('applications') }}" class="btn btn-primary">
+                    <i class="fas fa-list"></i> 查看申請名單
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-robot"></i> 機器人控制</h5>
+            </div>
+            <div class="card-body">
+                <p>控制Discord機器人功能</p>
+                <a href="{{ url_for('bot_control') }}" class="btn btn-success">
+                    <i class="fas fa-gamepad"></i> 機器人控制台
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.role.name == 'HIGH' %}
+<div class="row mt-4">
+    <div class="col">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5><i class="fas fa-crown"></i> 隊長專屬功能</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('users') }}" class="btn btn-outline-warning w-100 mb-2">
+                            <i class="fas fa-users-cog"></i> 用戶管理
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-warning w-100 mb-2" onclick="showAddUserModal()">
+                            <i class="fas fa-user-plus"></i> 新增賬號
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-warning w-100 mb-2" onclick="showSystemSettings()">
+                            <i class="fas fa-cogs"></i> 系統設置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 新增用戶模態（隊長專用） -->
+{% if current_user.role.name == 'HIGH' %}
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增用戶賬號</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label for="newUsername" class="form-label">用戶名</label>
+                        <input type="text" class="form-control" id="newUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">密碼</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newRole" class="form-label">權限等級</label>
+                        <select class="form-control" id="newRole" required>
+                            <option value="high">高 - 隊長權限</option>
+                            <option value="medium" selected>中 - 基本功能</option>
+                            <option value="low">低 - 受限用戶</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="createUser()">創建用戶</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function showAddUserModal() {
+    new bootstrap.Modal(document.getElementById('addUserModal')).show();
+}
+
+function createUser() {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const role = document.getElementById('newRole').value;
+    
+    fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            username: username,
+            password: password,
+            role: role
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('用戶創建成功！');
+            location.reload();
+        } else {
+            alert('創建失敗：' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

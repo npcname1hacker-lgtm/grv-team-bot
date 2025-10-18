@@ -1,10 +1,17 @@
-modules = ["python-3.11"]
+modules = ["python-3.11", "nodejs-20", "postgresql-16"]
+
 [agent]
 expertMode = true
-integrations = ["python_database==1.0.0"]
+integrations = [
+  "javascript_auth_all_persistance==1.0.0",
+  "twilio_send_message==1.0.0",
+  "javascript_sendgrid==1.0.0",
+  "python_database==1.0.0"
+]
 
 [nix]
 channel = "stable-25_05"
+packages = ["cargo", "libiconv", "rustc"]
 
 [workflows]
 runButton = "Project"
@@ -16,15 +23,20 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Discord Bot"
+args = "ɢʀᴠ戰隊系統"
 
 [[workflows.workflow]]
-name = "Discord Bot"
+name = "ɢʀᴠ戰隊系統"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip install discord.py python-dotenv && python main.py"
+args = "python integrated_launcher.py"
+waitForPort = 5000
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

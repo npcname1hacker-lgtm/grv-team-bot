@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}登錄 - ɢʀᴠ戰隊管理系統{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center bg-primary text-white">
+                <h3><i class="fas fa-gamepad"></i> ɢʀᴠ戰隊管理系統</h3>
+                <p class="mb-0">戰隊專屬管理面板</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user"></i> 用戶名
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock"></i> 密碼
+                        </label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> 登錄
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="showForgotPassword()">
+                            <i class="fas fa-question-circle"></i> 忘記密碼？
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted">
+                <small>V1.00.8 | 創作者：ɢʀᴠ戰隊隊長殤嵐</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 忘記密碼模態 -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">忘記密碼</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="forgotPasswordForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">電子郵件</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">電話號碼</label>
+                        <input type="tel" class="form-control" id="phone" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="sendVerification()">發送驗證碼</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showForgotPassword() {
+    new bootstrap.Modal(document.getElementById('forgotPasswordModal')).show();
+}
+
+function sendVerification() {
+    // 這裡會實現發送驗證碼功能
+    alert('驗證碼發送功能將在後續實現');
+}
+</script>
+{% endblock %}

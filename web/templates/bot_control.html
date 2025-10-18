@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}機器人控制 - ɢʀᴠ戰隊管理系統{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="fas fa-robot"></i> 機器人控制台</h2>
+        <p class="text-muted">管理Discord機器人功能</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 讓機器人說話 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-comment"></i> 讓機器人說話</h5>
+            </div>
+            <div class="card-body">
+                <form id="botSayForm">
+                    <div class="mb-3">
+                        <label for="channelSelect" class="form-label">選擇頻道</label>
+                        <select class="form-control" id="channelSelect">
+                            <option value="">選擇頻道...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="botMessage" class="form-label">訊息內容</label>
+                        <textarea class="form-control" id="botMessage" rows="4" placeholder="請輸入要讓機器人說的話..."></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="sendBotMessage()">
+                        <i class="fas fa-paper-plane"></i> 發送訊息
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 機器人狀態 -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-heartbeat"></i> 機器人狀態</h5>
+            </div>
+            <div class="card-body">
+                <div id="botStatus">
+                    <p><strong>狀態:</strong> <span id="statusIndicator">檢查中...</span></p>
+                    <p><strong>延遲:</strong> <span id="latency">-</span></p>
+                    <p><strong>連接的伺服器:</strong> <span id="guildCount">-</span></p>
+                    <p><strong>總成員數:</strong> <span id="memberCount">-</span></p>
+                </div>
+                <button class="btn btn-warning" onclick="restartBot()">
+                    <i class="fas fa-redo"></i> 重啟機器人
+                </button>
+                <button class="btn btn-info" onclick="checkBotStatus()">
+                    <i class="fas fa-sync"></i> 刷新狀態
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.role.name == 'HIGH' %}
+<!-- 隊長專屬功能 -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5><i class="fas fa-crown"></i> 隊長專屬 - 指令管理</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <button class="btn btn-success" onclick="showAddCommandModal()">
+                        <i class="fas fa-plus"></i> 新增指令
+                    </button>
+                    <button class="btn btn-info" onclick="loadCustomCommands()">
+                        <i class="fas fa-list"></i> 管理現有指令
+                    </button>
+                </div>
+                
+                <div id="commandsList">
+                    <!-- 指令列表將在這裡動態載入 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增指令模態 -->
+<div class="modal fade" id="addCommandModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增自定義指令</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCommandForm">
+                    <div class="mb-3">
+                        <label for="commandName" class="form-label">指令名稱</label>
+                        <input type="text" class="form-control" id="commandName" placeholder="例如: 戰隊規則" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commandAliases" class="form-label">指令別名（可選）</label>
+                        <input type="text" class="form-control" id="commandAliases" placeholder="用逗號分隔，例如: 規則,rule">
+                    </div>
+                    <div class="mb-3">
+                        <label for="commandDescription" class="form-label">指令描述</label>
+                        <input type="text" class="form-control" id="commandDescription" placeholder="簡短描述這個指令的用途" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commandResponse" class="form-label">回應內容</label>
+                        <textarea class="form-control" id="commandResponse" rows="6" placeholder="機器人執行此指令時要回應的內容..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="createCommand()">創建指令</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function sendBotMessage() {
+    const channel = document.getElementById('channelSelect').value;
+    const message = document.getElementById('botMessage').value;
+    
+    if (!channel || !message.trim()) {
+        alert('請選擇頻道並輸入訊息');
+        return;
+    }
+    
+    fetch('/api/bot/say', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            channel_id: channel,
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('訊息已發送！');
+            document.getElementById('botMessage').value = '';
+        } else {
+            alert('發送失敗：' + data.error);
+        }
+    });
+}
+
+function checkBotStatus() {
+    // 實現機器人狀態檢查
+    fetch('/api/bot/status')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('statusIndicator').innerHTML = data.online ? '🟢 在線' : '🔴 離線';
+        document.getElementById('latency').textContent = data.latency + 'ms';
+        document.getElementById('guildCount').textContent = data.guild_count;
+        document.getElementById('memberCount').textContent = data.member_count;
+    });
+}
+
+function restartBot() {
+    if (confirm('確定要重啟機器人嗎？')) {
+        alert('重啟功能將在後續實現');
+    }
+}
+
+{% if current_user.role.name == 'HIGH' %}
+function showAddCommandModal() {
+    new bootstrap.Modal(document.getElementById('addCommandModal')).show();
+}
+
+function createCommand() {
+    const name = document.getElementById('commandName').value;
+    const aliases = document.getElementById('commandAliases').value;
+    const description = document.getElementById('commandDescription').value;
+    const response = document.getElementById('commandResponse').value;
+    
+    alert('自定義指令功能將在後續實現');
+}
+{% endif %}
+
+// 載入頻道列表
+async function loadChannels() {
+    try {
+        const response = await fetch('/api/bot/channels');
+        const data = await response.json();
+        
+        const select = document.getElementById('channelSelect');
+        select.innerHTML = '<option value="">選擇頻道...</option>';
+        
+        if (data.channels) {
+            data.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `${channel.guild_name} - ${channel.name}`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('載入頻道列表失敗:', error);
+    }
+}
+
+// 頁面載入時檢查機器人狀態和載入頻道
+window.onload = function() {
+    checkBotStatus();
+    loadChannels();
+};
+</script>
+{% endblock %}
