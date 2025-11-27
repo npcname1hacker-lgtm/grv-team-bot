@@ -11,7 +11,7 @@ integrations = [
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "libiconv", "libsodium", "rustc", "espeak", "ffmpeg"]
+packages = ["cargo", "espeak", "ffmpeg", "libiconv", "libsodium", "rustc"]
 
 [workflows]
 runButton = "Project"
