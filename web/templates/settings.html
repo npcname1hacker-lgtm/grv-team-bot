@@ -90,17 +90,24 @@
             </div>
             <div class="card-body">
                 <div id="discordStatus">
-                    {% if user.discord_id %}
-                    <p class="text-success"><i class="fas fa-check-circle"></i> 已綁定 Discord</p>
-                    <p class="small text-muted">Discord ID: {{ user.discord_id }}</p>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="unlinkDiscord()">
-                        <i class="fas fa-unlink"></i> 解除綁定
-                    </button>
+                    {% if user.role.value == 'high' %}
+                        {% if user.discord_id %}
+                        <p class="text-success"><i class="fas fa-check-circle"></i> 已綁定 Discord</p>
+                        <p class="small text-muted">Discord ID: {{ user.discord_id }}</p>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="unlinkDiscord()">
+                            <i class="fas fa-unlink"></i> 解除綁定
+                        </button>
+                        {% else %}
+                        <p class="text-muted"><i class="fas fa-circle-notch"></i> 未綁定 Discord</p>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="bindDiscord()">
+                            <i class="fab fa-discord"></i> 綁定 Discord 帳號
+                        </button>
+                        {% endif %}
                     {% else %}
-                    <p class="text-muted"><i class="fas fa-circle-notch"></i> 未綁定 Discord</p>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="bindDiscord()">
-                        <i class="fab fa-discord"></i> 綁定 Discord 帳號
-                    </button>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-lock"></i> <strong>僅隊長可用</strong>
+                        <p class="mb-0 small mt-2">Discord 帳號綁定功能只對隊長開放</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>

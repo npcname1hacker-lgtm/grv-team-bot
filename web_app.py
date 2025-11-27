@@ -12,8 +12,10 @@ import threading
 import logging
 import os
 import json
-from datetime import datetime
-from web_models import WebUser, UserRole, BotCommand, get_web_database
+from datetime import datetime, timedelta
+import random
+import string
+from web_models import WebUser, UserRole, BotCommand, get_web_database, PasswordReset
 from models import get_bot_database
 from email_service import get_email_service
 
@@ -485,7 +487,10 @@ def unlink_discord():
 @app.route('/api/user/link-discord', methods=['POST'])
 @login_required
 def link_discord():
-    """綁定 Discord ID"""
+    """綁定 Discord ID - 僅隊長可用"""
+    if current_user.role != UserRole.HIGH:
+        return jsonify({'error': '僅隊長可綁定 Discord 帳號'}), 403
+    
     data = request.json
     discord_id = data.get('discord_id')
     
@@ -505,6 +510,157 @@ def link_discord():
         return jsonify({'error': str(e)}), 400
     finally:
         session.close()
+
+@app.route('/forgot-password')
+def forgot_password_page():
+    """忘記密碼重置頁面"""
+    username = request.args.get('username')
+    if not username:
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html', username=username)
+
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    """生成密碼重置驗證碼"""
+    data = request.json
+    username = data.get('username', '').strip()
+    
+    if not username:
+        return jsonify({'error': '請輸入用戶名'}), 400
+    
+    web_db, _ = get_databases()
+    
+    # 檢查用戶是否存在
+    user = web_db.get_user_by_username(username)
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    
+    # 生成 6 位驗證碼
+    code = ''.join(random.choices(string.digits, k=6))
+    
+    # 保存驗證碼到資料庫（10分鐘有效期）
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    web_db.create_password_reset(username, code, expires_at)
+    
+    # 發送 DM 給隊長們
+    if discord_bot_instance and hasattr(discord_bot_instance, 'loop'):
+        try:
+            asyncio.run_coroutine_threadsafe(
+                send_forgot_password_notification(code, username),
+                discord_bot_instance.loop
+            )
+        except Exception as e:
+            print(f"發送 Discord 通知失敗: {e}")
+    
+    return jsonify({'success': True, 'message': '驗證碼已發送至隊長'})
+
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    """重置密碼"""
+    data = request.json
+    username = data.get('username', '').strip()
+    code = data.get('code', '').strip()
+    new_password = data.get('new_password', '')
+    
+    if not username or not code or not new_password:
+        return jsonify({'error': '缺少必要信息'}), 400
+    
+    if len(code) != 6 or not code.isdigit():
+        return jsonify({'error': '驗證碼格式不正確'}), 400
+    
+    if len(new_password) < 6:
+        return jsonify({'error': '密碼至少 6 個字符'}), 400
+    
+    web_db, _ = get_databases()
+    
+    # 驗證碼
+    reset_record = web_db.verify_reset_code(username, code)
+    if not reset_record:
+        return jsonify({'error': '驗證碼無效或已過期'}), 400
+    
+    # 更新密碼
+    user = web_db.get_user_by_username(username)
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    
+    user_id = user.id
+    success = web_db.change_user_password(user_id, new_password)
+    
+    if success:
+        # 標記驗證碼為已使用
+        web_db.mark_reset_as_used(reset_record.id)
+        
+        # 發送確認 DM 給隊長
+        if discord_bot_instance and hasattr(discord_bot_instance, 'loop'):
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    send_password_reset_confirmation(username),
+                    discord_bot_instance.loop
+                )
+            except Exception as e:
+                print(f"發送確認通知失敗: {e}")
+        
+        return jsonify({'success': True, 'message': '密碼已重置'})
+    else:
+        return jsonify({'error': '重置失敗，請稍後重試'}), 400
+
+async def send_forgot_password_notification(code, username):
+    """發送忘記密碼通知到隊長 DM"""
+    try:
+        web_db, _ = get_databases()
+        admins = web_db.get_admin_users()
+        
+        if not admins or not admins[0].discord_id:
+            print("未找到隊長的 Discord ID")
+            return
+        
+        # 獲取隊長的 Discord 用戶對象
+        try:
+            admin_discord_id = int(admins[0].discord_id)
+            user = await discord_bot_instance.fetch_user(admin_discord_id)
+        except:
+            print(f"無法獲取隊長的 Discord 用戶: {admins[0].discord_id}")
+            return
+        
+        # 台灣時區時間
+        from datetime import timezone, timedelta
+        tz = timezone(timedelta(hours=8))
+        current_time = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 構建消息
+        message = f"""忘記密碼⚠️
+用戶名：{username}
+時間：{current_time}（台灣時間）
+驗證碼：{code}
+
+請不要把驗證碼給任何人！"""
+        
+        await user.send(message)
+    except Exception as e:
+        print(f"發送 Discord DM 失敗: {e}")
+
+async def send_password_reset_confirmation(username):
+    """發送密碼重置成功確認"""
+    try:
+        web_db, _ = get_databases()
+        admins = web_db.get_admin_users()
+        
+        if not admins or not admins[0].discord_id:
+            return
+        
+        try:
+            admin_discord_id = int(admins[0].discord_id)
+            user = await discord_bot_instance.fetch_user(admin_discord_id)
+        except:
+            return
+        
+        message = f"""✅ 密碼重置通知
+用戶 {username} 已成功重置密碼。
+請提醒用戶妥善保管密碼，不要給別人。"""
+        
+        await user.send(message)
+    except Exception as e:
+        print(f"發送確認通知失敗: {e}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

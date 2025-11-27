@@ -67,6 +67,17 @@ class BotCommand(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class PasswordReset(Base):
+    """密碼重置驗證碼表"""
+    __tablename__ = 'password_resets'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), nullable=False)
+    verification_code = Column(String(6), nullable=False)
+    is_used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+
 class SystemSettings(Base):
     """系統設置"""
     __tablename__ = 'system_settings'
@@ -244,6 +255,53 @@ class WebDatabaseManager:
         session = self.get_session()
         try:
             return session.query(BotCommand).filter_by(is_active=True).all()
+        finally:
+            session.close()
+    
+    def create_password_reset(self, username, code, expires_at):
+        """創建密碼重置驗證碼"""
+        session = self.get_session()
+        try:
+            reset = PasswordReset(username=username, verification_code=code, expires_at=expires_at)
+            session.add(reset)
+            session.commit()
+            return reset.id
+        finally:
+            session.close()
+    
+    def verify_reset_code(self, username, code):
+        """驗證重置碼"""
+        session = self.get_session()
+        try:
+            reset = session.query(PasswordReset).filter_by(
+                username=username, 
+                verification_code=code, 
+                is_used=False
+            ).first()
+            if reset and reset.expires_at > datetime.utcnow():
+                return reset
+            return None
+        finally:
+            session.close()
+    
+    def mark_reset_as_used(self, reset_id):
+        """標記重置碼為已使用"""
+        session = self.get_session()
+        try:
+            reset = session.query(PasswordReset).filter_by(id=reset_id).first()
+            if reset:
+                reset.is_used = True
+                session.commit()
+                return True
+            return False
+        finally:
+            session.close()
+    
+    def get_admin_users(self):
+        """獲取所有隊長級用戶"""
+        session = self.get_session()
+        try:
+            return session.query(WebUser).filter_by(role=UserRole.HIGH, is_active=True).all()
         finally:
             session.close()
 

@@ -51,24 +51,23 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">忘記密碼</h5>
+                <h5 class="modal-title"><i class="fas fa-key"></i> 忘記密碼</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <p class="text-muted small">驗證碼將通過 Discord 私訊發送給隊長</p>
                 <form id="forgotPasswordForm">
                     <div class="mb-3">
-                        <label for="email" class="form-label">電子郵件</label>
-                        <input type="email" class="form-control" id="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">電話號碼</label>
-                        <input type="tel" class="form-control" id="phone" required>
+                        <label for="forgotUsername" class="form-label">用戶名</label>
+                        <input type="text" class="form-control" id="forgotUsername" required>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="sendVerification()">發送驗證碼</button>
+                <button type="button" class="btn btn-primary" onclick="sendResetCode()">
+                    <i class="fas fa-paper-plane"></i> 發送驗證碼
+                </button>
             </div>
         </div>
     </div>
@@ -79,9 +78,29 @@ function showForgotPassword() {
     new bootstrap.Modal(document.getElementById('forgotPasswordModal')).show();
 }
 
-function sendVerification() {
-    // 這裡會實現發送驗證碼功能
-    alert('驗證碼發送功能將在後續實現');
+function sendResetCode() {
+    const username = document.getElementById('forgotUsername').value;
+    if (!username.trim()) {
+        alert('請輸入用戶名');
+        return;
+    }
+    
+    fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: username.trim()})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('驗證碼已發送至隊長的 Discord 私訊！');
+            bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal')).hide();
+            window.location.href = '/forgot-password?username=' + encodeURIComponent(username);
+        } else {
+            alert('錯誤: ' + data.error);
+        }
+    })
+    .catch(e => alert('發送失敗，請稍後重試'));
 }
 </script>
 {% endblock %}
