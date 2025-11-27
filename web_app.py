@@ -1404,9 +1404,17 @@ def voice_text_to_speech():
                 
                 print(f"[TTS] 開始文字轉語音，全局語音客戶端: {global_voice_client}")
                 
-                if not global_voice_client or not global_voice_client.is_connected():
-                    print(f"[TTS] 沒有語音客戶端或未連接")
+                if not global_voice_client:
+                    print(f"[TTS] 沒有語音客戶端")
                     return False, '機器人未連接語音頻道'
+                
+                # 檢查客戶端是否有效（不使用 is_connected，因為在握手時返回 False）
+                try:
+                    if not hasattr(global_voice_client, 'play'):
+                        print(f"[TTS] 語音客戶端無效")
+                        return False, '語音客戶端無效'
+                except:
+                    pass
                 
                 try:
                     # 生成臨時 WAV 文件
