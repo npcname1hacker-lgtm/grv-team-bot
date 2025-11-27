@@ -6,6 +6,7 @@
     --warning-color: #ffc107;
     --danger-color: #dc3545;
     --dark-color: #343a40;
+    --sidebar-width: 250px;
 }
 
 body {
@@ -18,6 +19,98 @@ body {
 
 main {
     flex: 1;
+}
+
+/* 側邊欄樣式 */
+.sidebar-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.sidebar-toggle:hover {
+    background: #0056b3;
+}
+
+.sidebar {
+    position: fixed;
+    left: -250px;
+    top: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--dark-color);
+    color: white;
+    padding-top: 1rem;
+    transition: left 0.3s ease;
+    z-index: 999;
+    overflow-y: auto;
+}
+
+.sidebar.show {
+    left: 0;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem 1rem;
+    border-bottom: 1px solid #495057;
+}
+
+.sidebar-header h5 {
+    margin: 0;
+    color: white;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 0;
+}
+
+.sidebar-nav .nav-link {
+    color: #b0bec5;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-nav .nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-nav .nav-link.text-danger:hover {
+    background: rgba(220, 53, 69, 0.2);
+    color: #ff6b6b;
+}
+
+/* 隱藏側邊欄時調整主要內容 */
+@media (max-width: 768px) {
+    main {
+        margin-top: 50px;
+    }
 }
 
 /* 導航欄 */

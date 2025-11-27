@@ -98,6 +98,18 @@ class DiscordBot:
             if self.config.DEBUG:
                 self.logger.debug(f'收到訊息 - 使用者: {message.author}, 內容: {message.content}')
             
+            # 敏感詞過濾
+            try:
+                from web_app import SENSITIVE_WORDS
+                content_lower = message.content.lower()
+                for word in SENSITIVE_WORDS:
+                    if word in content_lower:
+                        await message.delete()
+                        await message.author.send(f"⚠️ 訊息包含不允許的詞彙: {word}")
+                        return
+            except Exception as e:
+                self.logger.debug(f'敏感詞過濾錯誤: {e}')
+            
             # 處理 @機器人 的訊息
             if self.bot.user and self.bot.user.mentioned_in(message) and not message.mention_everyone:
                 embed = discord.Embed(

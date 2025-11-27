@@ -64,60 +64,133 @@
 {% if current_user.role.name == 'HIGH' %}
 <!-- 隊長專屬功能 -->
 <div class="row">
-    <div class="col-12 mb-4">
-        <div class="card border-warning">
-            <div class="card-header bg-warning text-dark">
-                <h5><i class="fas fa-crown"></i> 隊長專屬 - 指令管理</h5>
+    <!-- 機器人重啟 -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-crown"></i> 隊長專屬 - 機器人重啟</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">重啟機器人以應用最新配置</p>
+                <button class="btn btn-danger" onclick="confirmRestartBot()">
+                    <i class="fas fa-power-off"></i> 重啟機器人
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 機器人活動狀態 -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-crown"></i> 隊長專屬 - 機器人活動狀態</h5>
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <button class="btn btn-success" onclick="showAddCommandModal()">
-                        <i class="fas fa-plus"></i> 新增指令
-                    </button>
-                    <button class="btn btn-info" onclick="loadCustomCommands()">
-                        <i class="fas fa-list"></i> 管理現有指令
-                    </button>
+                    <label for="botActivity" class="form-label">機器人狀態</label>
+                    <input type="text" class="form-control" id="botActivity" placeholder="例如: 守護戰隊">
                 </div>
-                
-                <div id="commandsList">
-                    <!-- 指令列表將在這裡動態載入 -->
+                <button class="btn btn-info" onclick="updateBotActivity()">
+                    <i class="fas fa-check"></i> 更新狀態
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 文字頻道控制 -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5><i class="fas fa-comments"></i> 文字頻道控制</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="textChannelSelect" class="form-label">選擇頻道</label>
+                        <select class="form-control" id="textChannelSelect">
+                            <option value="">選擇頻道...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="userToModerate" class="form-label">選擇成員</label>
+                        <select class="form-control" id="userToModerate">
+                            <option value="">選擇成員...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-warning" onclick="muteTextUser()">
+                        <i class="fas fa-mute"></i> 禁言
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="kickTextUser()">
+                        <i class="fas fa-sign-out-alt"></i> 踢出
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 新增指令模態 -->
-<div class="modal fade" id="addCommandModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">新增自定義指令</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- 語音頻道控制 -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-microphone"></i> 語音頻道控制</h5>
             </div>
-            <div class="modal-body">
-                <form id="addCommandForm">
-                    <div class="mb-3">
-                        <label for="commandName" class="form-label">指令名稱</label>
-                        <input type="text" class="form-control" id="commandName" placeholder="例如: 戰隊規則" required>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="voiceChannelSelect" class="form-label">選擇語音頻道</label>
+                        <select class="form-control" id="voiceChannelSelect">
+                            <option value="">選擇語音頻道...</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="commandAliases" class="form-label">指令別名（可選）</label>
-                        <input type="text" class="form-control" id="commandAliases" placeholder="用逗號分隔，例如: 規則,rule">
+                    <div class="col-md-6">
+                        <label for="voiceUserToModerate" class="form-label">選擇成員</label>
+                        <select class="form-control" id="voiceUserToModerate">
+                            <option value="">選擇成員...</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="commandDescription" class="form-label">指令描述</label>
-                        <input type="text" class="form-control" id="commandDescription" placeholder="簡短描述這個指令的用途" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="commandResponse" class="form-label">回應內容</label>
-                        <textarea class="form-control" id="commandResponse" rows="6" placeholder="機器人執行此指令時要回應的內容..." required></textarea>
-                    </div>
-                </form>
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-info" onclick="muteVoiceUser()">
+                        <i class="fas fa-volume-mute"></i> 禁言
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="deafenVoiceUser()">
+                        <i class="fas fa-deaf"></i> 失聰
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="kickVoiceUser()">
+                        <i class="fas fa-sign-out-alt"></i> 踢出
+                    </button>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-success" onclick="createCommand()">創建指令</button>
+        </div>
+    </div>
+</div>
+
+<!-- 敏感詞過濾 -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-filter"></i> 敏感詞過濾管理</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="sensitiveWord" class="form-label">新增敏感詞</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="sensitiveWord" placeholder="輸入要過濾的詞彙">
+                        <button class="btn btn-secondary" type="button" onclick="addSensitiveWord()">
+                            <i class="fas fa-plus"></i> 新增
+                        </button>
+                    </div>
+                </div>
+                <div id="sensitiveWordsList" class="mt-3">
+                    <p class="text-muted">敏感詞列表載入中...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -169,24 +242,204 @@ function checkBotStatus() {
 
 function restartBot() {
     if (confirm('確定要重啟機器人嗎？')) {
-        alert('重啟功能將在後續實現');
+        fetch('/api/bot/restart', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('機器人正在重啟，請稍候...');
+            } else {
+                alert('錯誤: ' + data.error);
+            }
+        });
     }
 }
 
-{% if current_user.role.name == 'HIGH' %}
-function showAddCommandModal() {
-    new bootstrap.Modal(document.getElementById('addCommandModal')).show();
+function confirmRestartBot() {
+    if (confirm('確定要重啟機器人？這可能需要幾秒鐘')) {
+        restartBot();
+    }
 }
 
-function createCommand() {
-    const name = document.getElementById('commandName').value;
-    const aliases = document.getElementById('commandAliases').value;
-    const description = document.getElementById('commandDescription').value;
-    const response = document.getElementById('commandResponse').value;
+function updateBotActivity() {
+    const activity = document.getElementById('botActivity').value;
+    if (!activity.trim()) {
+        alert('請輸入機器人狀態');
+        return;
+    }
     
-    alert('自定義指令功能將在後續實現');
+    fetch('/api/bot/activity', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({activity: activity})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('機器人狀態已更新！');
+        } else {
+            alert('更新失敗: ' + data.error);
+        }
+    });
 }
-{% endif %}
+
+function muteTextUser() {
+    const channel = document.getElementById('textChannelSelect').value;
+    const user = document.getElementById('userToModerate').value;
+    if (!channel || !user) {
+        alert('請選擇頻道和成員');
+        return;
+    }
+    
+    fetch('/api/channel/mute', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channel, user_id: user})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) alert('已禁言！');
+        else alert('錯誤: ' + data.error);
+    });
+}
+
+function kickTextUser() {
+    const channel = document.getElementById('textChannelSelect').value;
+    const user = document.getElementById('userToModerate').value;
+    if (!channel || !user) {
+        alert('請選擇頻道和成員');
+        return;
+    }
+    
+    fetch('/api/channel/kick', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channel, user_id: user})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) alert('已踢出！');
+        else alert('錯誤: ' + data.error);
+    });
+}
+
+function muteVoiceUser() {
+    const channel = document.getElementById('voiceChannelSelect').value;
+    const user = document.getElementById('voiceUserToModerate').value;
+    if (!channel || !user) {
+        alert('請選擇語音頻道和成員');
+        return;
+    }
+    
+    fetch('/api/voice/mute', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channel, user_id: user})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) alert('已禁言！');
+        else alert('錯誤: ' + data.error);
+    });
+}
+
+function deafenVoiceUser() {
+    const channel = document.getElementById('voiceChannelSelect').value;
+    const user = document.getElementById('voiceUserToModerate').value;
+    if (!channel || !user) {
+        alert('請選擇語音頻道和成員');
+        return;
+    }
+    
+    fetch('/api/voice/deafen', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channel, user_id: user})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) alert('已失聰！');
+        else alert('錯誤: ' + data.error);
+    });
+}
+
+function kickVoiceUser() {
+    const channel = document.getElementById('voiceChannelSelect').value;
+    const user = document.getElementById('voiceUserToModerate').value;
+    if (!channel || !user) {
+        alert('請選擇語音頻道和成員');
+        return;
+    }
+    
+    fetch('/api/voice/kick', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channel, user_id: user})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) alert('已踢出！');
+        else alert('錯誤: ' + data.error);
+    });
+}
+
+function addSensitiveWord() {
+    const word = document.getElementById('sensitiveWord').value;
+    if (!word.trim()) {
+        alert('請輸入敏感詞');
+        return;
+    }
+    
+    fetch('/api/filter/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word: word})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('已新增敏感詞');
+            document.getElementById('sensitiveWord').value = '';
+            loadSensitiveWords();
+        } else {
+            alert('錯誤: ' + data.error);
+        }
+    });
+}
+
+function loadSensitiveWords() {
+    fetch('/api/filter/list')
+    .then(r => r.json())
+    .then(data => {
+        const list = document.getElementById('sensitiveWordsList');
+        if (data.words && data.words.length > 0) {
+            let html = '<ul class="list-group">';
+            data.words.forEach(w => {
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${w}
+                    <button class="btn btn-sm btn-danger" onclick="removeSensitiveWord('${w}')">刪除</button>
+                </li>`;
+            });
+            html += '</ul>';
+            list.innerHTML = html;
+        } else {
+            list.innerHTML = '<p class="text-muted">暫無敏感詞</p>';
+        }
+    });
+}
+
+function removeSensitiveWord(word) {
+    fetch('/api/filter/remove', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word: word})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadSensitiveWords();
+        }
+    });
+}
 
 // 載入頻道列表
 async function loadChannels() {
@@ -214,6 +467,9 @@ async function loadChannels() {
 window.onload = function() {
     checkBotStatus();
     loadChannels();
+    {% if current_user.role.name == 'HIGH' %}
+    loadSensitiveWords();
+    {% endif %}
 };
 </script>
 {% endblock %}

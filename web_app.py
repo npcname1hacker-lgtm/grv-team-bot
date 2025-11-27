@@ -701,5 +701,279 @@ async def send_password_reset_confirmation(username):
     except Exception as e:
         print(f"發送確認通知失敗: {e}")
 
+# ============== 新功能 API ==============
+
+# 敏感詞列表（存儲在內存，可擴展至數據庫）
+SENSITIVE_WORDS = set()
+
+@app.route('/api/bot/check-verification', methods=['GET'])
+def check_bot_verification():
+    """檢查是否需要機器人驗證"""
+    # 可根據設置返回是否需要機器人驗證
+    return jsonify({'requires_verification': False})
+
+@app.route('/api/bot/restart', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def restart_bot():
+    """重啟機器人"""
+    try:
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            # 直接重啟機器人
+            asyncio.run_coroutine_threadsafe(
+                discord_bot_instance.bot.close(),
+                discord_bot_instance.bot.loop
+            )
+            return jsonify({'success': True, 'message': '機器人正在重啟'})
+        return jsonify({'error': '機器人未連接'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/bot/activity', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def update_bot_activity():
+    """更新機器人活動狀態"""
+    try:
+        data = request.json
+        activity_text = data.get('activity', '').strip()
+        
+        if not activity_text:
+            return jsonify({'error': '活動狀態不能為空'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            bot = discord_bot_instance.bot
+            activity = discord.Game(name=activity_text)
+            asyncio.run_coroutine_threadsafe(
+                bot.change_presence(activity=activity),
+                bot.loop
+            )
+            return jsonify({'success': True, 'message': '機器人狀態已更新'})
+        
+        return jsonify({'error': '機器人未連接'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/channel/mute', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def mute_text_user():
+    """禁言文字頻道成員"""
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        user_id = int(data.get('user_id', 0))
+        
+        if not channel_id or not user_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_mute():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel:
+                    member = await channel.guild.fetch_member(user_id)
+                    if member:
+                        await member.edit(permissions=discord.Permissions(send_messages=False))
+                        return True
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_mute(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '已禁言'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/channel/kick', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def kick_text_user():
+    """踢出文字頻道成員"""
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        user_id = int(data.get('user_id', 0))
+        
+        if not channel_id or not user_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_kick():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel:
+                    member = await channel.guild.fetch_member(user_id)
+                    if member:
+                        await member.kick()
+                        return True
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_kick(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '已踢出'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/mute', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def mute_voice_user():
+    """禁言語音頻道成員"""
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        user_id = int(data.get('user_id', 0))
+        
+        if not channel_id or not user_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_voice_mute():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    member = await channel.guild.fetch_member(user_id)
+                    if member:
+                        await member.edit(mute=True)
+                        return True
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_voice_mute(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '已禁言'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/deafen', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def deafen_voice_user():
+    """使語音用戶失聰"""
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        user_id = int(data.get('user_id', 0))
+        
+        if not channel_id or not user_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_deafen():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    member = await channel.guild.fetch_member(user_id)
+                    if member:
+                        await member.edit(deafen=True)
+                        return True
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_deafen(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '已失聰'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/kick', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def kick_voice_user():
+    """踢出語音頻道成員"""
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        user_id = int(data.get('user_id', 0))
+        
+        if not channel_id or not user_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_voice_kick():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    member = await channel.guild.fetch_member(user_id)
+                    if member:
+                        await member.move_to(None)
+                        return True
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_voice_kick(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '已踢出'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/filter/add', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def add_sensitive_word():
+    """添加敏感詞"""
+    try:
+        data = request.json
+        word = data.get('word', '').strip().lower()
+        
+        if not word:
+            return jsonify({'error': '敏感詞不能為空'}), 400
+        
+        SENSITIVE_WORDS.add(word)
+        return jsonify({'success': True, 'message': '已添加敏感詞'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/filter/remove', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def remove_sensitive_word():
+    """移除敏感詞"""
+    try:
+        data = request.json
+        word = data.get('word', '').strip().lower()
+        
+        SENSITIVE_WORDS.discard(word)
+        return jsonify({'success': True, 'message': '已移除敏感詞'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/filter/list', methods=['GET'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def list_sensitive_words():
+    """獲取敏感詞列表"""
+    try:
+        return jsonify({'success': True, 'words': sorted(list(SENSITIVE_WORDS))})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
