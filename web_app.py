@@ -540,19 +540,40 @@ def forgot_password():
     
     # 保存驗證碼到資料庫（10分鐘有效期）
     expires_at = datetime.utcnow() + timedelta(minutes=10)
-    web_db.create_password_reset(username, code, expires_at)
+    reset_id = web_db.create_password_reset(username, code, expires_at)
     
-    # 發送 DM 給隊長們
-    if discord_bot_instance and hasattr(discord_bot_instance, 'loop'):
+    print(f"\n{'='*60}")
+    print(f"忘記密碼驗證碼已創建")
+    print(f"{'='*60}")
+    print(f"用戶名: {username}")
+    print(f"驗證碼: {code}")
+    print(f"有效期: 10 分鐘")
+    print(f"記錄 ID: {reset_id}")
+    print(f"{'='*60}\n")
+    
+    # 非同步發送 DM 給隊長
+    if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
         try:
-            asyncio.run_coroutine_threadsafe(
-                send_forgot_password_notification(code, username),
-                discord_bot_instance.loop
-            )
+            # 使用 threading 在後台發送
+            def send_dm_background():
+                try:
+                    bot_instance = discord_bot_instance.bot
+                    if bot_instance and hasattr(bot_instance, 'loop'):
+                        asyncio.run_coroutine_threadsafe(
+                            send_forgot_password_notification(code, username),
+                            bot_instance.loop
+                        )
+                    else:
+                        print(f"✗ 機器人 loop 不可用")
+                except Exception as e:
+                    print(f"✗ 後台發送 DM 失敗: {e}")
+            
+            thread = threading.Thread(target=send_dm_background, daemon=True)
+            thread.start()
         except Exception as e:
-            print(f"發送 Discord 通知失敗: {e}")
+            print(f"✗ 啟動後台線程失敗: {e}")
     
-    return jsonify({'success': True, 'message': '驗證碼已發送至隊長'})
+    return jsonify({'success': True, 'message': '驗證碼已發送'})
 
 @app.route('/api/reset-password', methods=['POST'])
 def reset_password():
@@ -591,12 +612,14 @@ def reset_password():
         web_db.mark_reset_as_used(reset_record.id)
         
         # 發送確認 DM 給隊長
-        if discord_bot_instance and hasattr(discord_bot_instance, 'loop'):
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             try:
-                asyncio.run_coroutine_threadsafe(
-                    send_password_reset_confirmation(username),
-                    discord_bot_instance.loop
-                )
+                bot_instance = discord_bot_instance.bot
+                if bot_instance and hasattr(bot_instance, 'loop'):
+                    asyncio.run_coroutine_threadsafe(
+                        send_password_reset_confirmation(username),
+                        bot_instance.loop
+                    )
             except Exception as e:
                 print(f"發送確認通知失敗: {e}")
         
@@ -607,9 +630,6 @@ def reset_password():
 async def send_forgot_password_notification(code, username):
     """發送忘記密碼通知到隊長 DM"""
     try:
-        web_db, _ = get_databases()
-        admins = web_db.get_admin_users()
-        
         # 台灣時區時間
         from datetime import timezone, timedelta
         tz = timezone(timedelta(hours=8))
@@ -623,26 +643,40 @@ async def send_forgot_password_notification(code, username):
 
 請不要把驗證碼給任何人！"""
         
-        # 嘗試發送 Discord DM
-        if admins and admins[0].discord_id:
-            try:
-                admin_discord_id = int(admins[0].discord_id)
-                user = await discord_bot_instance.fetch_user(admin_discord_id)
-                await user.send(message)
-                print(f"✓ 已發送 Discord DM 給隊長 (ID: {admin_discord_id})")
-                return
-            except Exception as e:
-                print(f"✗ Discord DM 發送失敗: {e}")
+        # 嘗試獲取隊長
+        web_db, _ = get_databases()
+        admins = web_db.get_admin_users()
         
-        # 備選方案：發送到系統日誌
-        print(f"\n{'='*50}")
-        print(f"忘記密碼驗證碼通知")
-        print(f"{'='*50}")
-        print(message)
-        print(f"{'='*50}\n")
+        if not admins:
+            print(f"✗ 未找到隊長")
+            print(f"\n{message}\n")
+            return
+        
+        admin = admins[0]
+        if not admin.discord_id:
+            print(f"✗ 隊長未綁定 Discord ID")
+            print(f"\n{message}\n")
+            return
+        
+        # 嘗試發送 Discord DM
+        try:
+            admin_discord_id = int(admin.discord_id)
+            # 訪問機器人實例的 bot 屬性
+            bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance
+            user = await bot.fetch_user(admin_discord_id)
+            await user.send(message)
+            print(f"\n✓ 已發送 Discord DM 給隊長")
+            print(f"  隊長 ID: {admin_discord_id}")
+            print(f"  用戶名: {username}")
+            print(f"  驗證碼: {code}\n")
+        except Exception as e:
+            print(f"\n✗ Discord DM 發送失敗: {str(e)[:100]}")
+            print(f"  原始訊息:")
+            print(message)
+            print()
         
     except Exception as e:
-        print(f"發送通知失敗: {e}")
+        print(f"✗ 通知系統錯誤: {str(e)[:100]}")
 
 async def send_password_reset_confirmation(username):
     """發送密碼重置成功確認"""
