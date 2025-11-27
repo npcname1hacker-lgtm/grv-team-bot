@@ -610,18 +610,6 @@ async def send_forgot_password_notification(code, username):
         web_db, _ = get_databases()
         admins = web_db.get_admin_users()
         
-        if not admins or not admins[0].discord_id:
-            print("未找到隊長的 Discord ID")
-            return
-        
-        # 獲取隊長的 Discord 用戶對象
-        try:
-            admin_discord_id = int(admins[0].discord_id)
-            user = await discord_bot_instance.fetch_user(admin_discord_id)
-        except:
-            print(f"無法獲取隊長的 Discord 用戶: {admins[0].discord_id}")
-            return
-        
         # 台灣時區時間
         from datetime import timezone, timedelta
         tz = timezone(timedelta(hours=8))
@@ -635,9 +623,26 @@ async def send_forgot_password_notification(code, username):
 
 請不要把驗證碼給任何人！"""
         
-        await user.send(message)
+        # 嘗試發送 Discord DM
+        if admins and admins[0].discord_id:
+            try:
+                admin_discord_id = int(admins[0].discord_id)
+                user = await discord_bot_instance.fetch_user(admin_discord_id)
+                await user.send(message)
+                print(f"✓ 已發送 Discord DM 給隊長 (ID: {admin_discord_id})")
+                return
+            except Exception as e:
+                print(f"✗ Discord DM 發送失敗: {e}")
+        
+        # 備選方案：發送到系統日誌
+        print(f"\n{'='*50}")
+        print(f"忘記密碼驗證碼通知")
+        print(f"{'='*50}")
+        print(message)
+        print(f"{'='*50}\n")
+        
     except Exception as e:
-        print(f"發送 Discord DM 失敗: {e}")
+        print(f"發送通知失敗: {e}")
 
 async def send_password_reset_confirmation(username):
     """發送密碼重置成功確認"""

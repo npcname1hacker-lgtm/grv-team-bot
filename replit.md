@@ -64,7 +64,7 @@
 ### 預設管理員賬號
 
 系統自動創建三個管理員：
-- **admin0803** (隊長) - 密碼: `admin0803+0815` - HIGH權限
+- **admin0803** (隊長) - 密碼: `admin0803+0815` - HIGH權限 ✅ Discord ID 已綁定
 - **admin0815** (幹部) - 密碼: `admin-fan.wei.lun` - MEDIUM權限  
 - **admin3** (幹部) - 密碼: `admin1331914` - MEDIUM權限
 
