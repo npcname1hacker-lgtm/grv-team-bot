@@ -464,5 +464,47 @@ def update_user_role():
     else:
         return jsonify({'error': '更新失敗'}), 400
 
+@app.route('/api/user/unlink-discord', methods=['POST'])
+@login_required
+def unlink_discord():
+    """解除 Discord 綁定"""
+    web_db, _ = get_databases()
+    session = web_db.get_session()
+    try:
+        user = session.query(WebUser).filter_by(id=current_user.id).first()
+        if user:
+            user.discord_id = None
+            session.commit()
+            return jsonify({'success': True, 'message': 'Discord 綁定已解除'})
+        return jsonify({'error': '用戶不存在'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    finally:
+        session.close()
+
+@app.route('/api/user/link-discord', methods=['POST'])
+@login_required
+def link_discord():
+    """綁定 Discord ID"""
+    data = request.json
+    discord_id = data.get('discord_id')
+    
+    if not discord_id:
+        return jsonify({'error': '缺少 Discord ID'}), 400
+    
+    web_db, _ = get_databases()
+    session = web_db.get_session()
+    try:
+        user = session.query(WebUser).filter_by(id=current_user.id).first()
+        if user:
+            user.discord_id = discord_id
+            session.commit()
+            return jsonify({'success': True, 'message': 'Discord 帳號已綁定'})
+        return jsonify({'error': '用戶不存在'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    finally:
+        session.close()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -57,7 +57,7 @@
         </div>
         
         <!-- 更改密碼 -->
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">
                 <h5><i class="fas fa-lock"></i> 更改密碼</h5>
             </div>
@@ -80,6 +80,29 @@
                         <i class="fas fa-key"></i> 更新密碼
                     </button>
                 </form>
+            </div>
+        </div>
+        
+        <!-- Discord 綁定 -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fab fa-discord"></i> Discord 帳號綁定</h5>
+            </div>
+            <div class="card-body">
+                <div id="discordStatus">
+                    {% if user.discord_id %}
+                    <p class="text-success"><i class="fas fa-check-circle"></i> 已綁定 Discord</p>
+                    <p class="small text-muted">Discord ID: {{ user.discord_id }}</p>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="unlinkDiscord()">
+                        <i class="fas fa-unlink"></i> 解除綁定
+                    </button>
+                    {% else %}
+                    <p class="text-muted"><i class="fas fa-circle-notch"></i> 未綁定 Discord</p>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="bindDiscord()">
+                        <i class="fab fa-discord"></i> 綁定 Discord 帳號
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -134,6 +157,61 @@ function updateProfile() {
             alert('更新失敗：' + data.error);
         }
     });
+}
+
+function bindDiscord() {
+    // 簡化方式：要求用戶輸入 Discord ID
+    const discordId = prompt('請輸入您的 Discord ID 或 @用戶名:\n(您可以在 Discord 中右鍵點擊用戶名，選擇「複製用戶ID」)');
+    
+    if (!discordId || discordId.trim() === '') {
+        alert('已取消綁定');
+        return;
+    }
+    
+    fetch('/api/user/link-discord', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            discord_id: discordId.trim()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Discord 帳號已綁定！');
+            location.reload();
+        } else {
+            alert('綁定失敗: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('綁定出錯，請稍後重試');
+    });
+}
+
+function unlinkDiscord() {
+    if (confirm('確定要解除 Discord 綁定嗎？')) {
+        fetch('/api/user/unlink-discord', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('已解除 Discord 綁定');
+                location.reload();
+            } else {
+                alert('解除綁定失敗: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
 }
 
 function changePassword() {
