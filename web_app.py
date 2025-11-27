@@ -1293,14 +1293,29 @@ def leave_voice_channel():
             try:
                 global global_voice_client
                 bot = discord_bot_instance.bot
+                disconnected = False
+                
+                # 遍歷所有伺服器並斷開連接
                 for guild in bot.guilds:
                     if guild.voice_client:
-                        await guild.voice_client.disconnect()
-                        global_voice_client = None
-                        return True, '已退出語音頻道'
-                return False, '機器人未連接任何語音頻道'
+                        try:
+                            print(f"[LEAVE] 正在斷開連接: {guild.name}")
+                            await guild.voice_client.disconnect(force=True)
+                            disconnected = True
+                            print(f"[LEAVE] 已成功斷開: {guild.name}")
+                        except Exception as disconnect_err:
+                            print(f"[LEAVE] 斷開時出錯: {str(disconnect_err)}")
+                
+                # 清除全局變量
+                global_voice_client = None
+                
+                if disconnected:
+                    return True, '已退出語音頻道'
+                else:
+                    return False, '機器人未連接任何語音頻道'
             except Exception as e:
-                return False, str(e)
+                print(f"[LEAVE] 異常: {str(e)}")
+                return False, f'退出失敗: {str(e)}'
         
         result, message = asyncio.run_coroutine_threadsafe(
             do_leave(),
