@@ -87,6 +87,11 @@ def login():
         user = web_db.get_user_by_username(username)
         
         if user and user.check_password(password):
+            # 檢查帳號是否通過審核
+            if not user.is_approved:
+                flash('您的帳號還未通過隊長審核，請耐心等待', 'error')
+                return render_template('login.html')
+            
             # 更新最後登錄時間
             web_db, _ = get_databases()
             session = web_db.get_session()
@@ -107,50 +112,22 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """註冊頁面 - 使用電子郵件驗證碼註冊"""
+    """註冊頁面 - 簡化註冊流程"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        action = request.form.get('action')
-        
-        # 步驟1: 發送驗證碼
-        if action == 'send_code':
-            email = request.form.get('email')
-            
-            # 檢查郵箱是否已被使用
-            web_db, _ = get_databases()
-            session = web_db.get_session()
-            try:
-                existing_email = session.query(WebUser).filter_by(email=email).first()
-                if existing_email:
-                    return jsonify({'success': False, 'error': '此電子郵件已被註冊'})
-            finally:
-                session.close()
-            
-            # 發送驗證碼
-            email_svc = get_email_service()
-            success, message = email_svc.send_verification_email(email, '註冊新帳號')
-            return jsonify({'success': success, 'message': message})
-        
-        # 步驟2: 完成註冊
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
-        verification_code = request.form['verification_code']
-        discord_id = request.form.get('discord_id', '')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
         
         # 驗證密碼
         if password != confirm_password:
             flash('兩次輸入的密碼不一致', 'error')
             return render_template('register.html')
         
-        # 驗證驗證碼
-        email_svc = get_email_service()
-        code_valid, message = email_svc.verify_code(email, verification_code)
-        if not code_valid:
-            flash(f'驗證碼錯誤：{message}', 'error')
+        if len(password) < 6:
+            flash('密碼至少6個字符', 'error')
             return render_template('register.html')
         
         # 檢查用戶名是否已存在
@@ -160,36 +137,164 @@ def register():
             flash('用戶名已被使用，請選擇其他用戶名', 'error')
             return render_template('register.html')
         
-        # 創建新用戶（預設為LOW權限，需要隊長審核）
+        # 獲取用戶IP
+        user_ip = request.remote_addr or 'Unknown'
+        
+        # 創建新用戶（is_approved=False，需要隊長審核）
         try:
             web_db, _ = get_databases()
-            user_id = web_db.create_user(
-                username=username,
-                password=password,
-                role=UserRole.LOW,  # 新用戶預設受限，需要隊長提升權限
-                created_by='self_register',
-                email=email
-            )
-            
-            # 如果提供了Discord ID，更新它
-            if discord_id:
-                session = web_db.get_session()
-                try:
-                    user = session.query(WebUser).filter_by(id=user_id).first()
-                    if user:
-                        user.discord_id = discord_id
-                        session.commit()
-                finally:
-                    session.close()
-            
-            flash('註冊成功！您的帳號需要隊長審核後才能使用完整功能。請聯繫隊長申請權限提升。', 'success')
-            return redirect(url_for('login'))
-            
+            session = web_db.get_session()
+            try:
+                new_user = WebUser(
+                    username=username,
+                    role=UserRole.MEDIUM,
+                    is_active=True,
+                    is_approved=False,  # 待審核
+                    approval_status='pending',
+                    user_ip=user_ip,
+                    created_by='self_register',
+                    created_at=datetime.utcnow()
+                )
+                new_user.set_password(password)
+                session.add(new_user)
+                session.commit()
+                
+                # 發送Discord DM申請到隊長
+                if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            send_account_approval_request(username, user_ip),
+                            discord_bot_instance.bot.loop
+                        )
+                    except Exception as e:
+                        print(f"發送申請DM失敗: {e}")
+                
+                flash('✅ 註冊成功！請耐心等待隊長審核', 'success')
+                return redirect(url_for('login'))
+            finally:
+                session.close()
         except Exception as e:
-            flash(f'註冊失敗：{str(e)}', 'error')
+            flash(f'創建帳號失敗: {str(e)}', 'error')
             return render_template('register.html')
     
     return render_template('register.html')
+
+async def send_account_approval_request(username, user_ip):
+    """發送帳號審核申請到隊長DM"""
+    try:
+        web_db, _ = get_databases()
+        admins = web_db.get_admin_users()
+        
+        if not admins or not admins[0].discord_id:
+            print(f"✗ 未找到隊長或隊長未綁定Discord ID")
+            return
+        
+        admin_discord_id = int(admins[0].discord_id)
+        bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance
+        user = await bot.fetch_user(admin_discord_id)
+        
+        # 構建申請訊息
+        from datetime import timezone, timedelta
+        tz = timezone(timedelta(hours=8))
+        current_time = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        
+        message = f"""機器人面板申請！！
+
+名稱：{username}
+IP：{user_ip}
+時間：{current_time}（台灣時間）"""
+        
+        await user.send(message)
+        print(f"✓ 已發送審核申請DM給隊長: {username}")
+        
+    except Exception as e:
+        print(f"✗ 發送審核申請失敗: {str(e)}")
+
+@app.route('/api/approve-account', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def approve_account():
+    """批准帳號"""
+    data = request.json
+    username = data.get('username', '')
+    
+    web_db, _ = get_databases()
+    user = web_db.get_user_by_username(username)
+    
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    
+    session = web_db.get_session()
+    try:
+        user.is_approved = True
+        user.approval_status = 'approved'
+        session.merge(user)
+        session.commit()
+        
+        # 可選：發送DM確認給用戶
+        return jsonify({'success': True, 'message': f'已批准用戶 {username}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    finally:
+        session.close()
+
+@app.route('/api/reject-account', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def reject_account():
+    """拒絕帳號"""
+    data = request.json
+    username = data.get('username', '')
+    
+    web_db, _ = get_databases()
+    user = web_db.get_user_by_username(username)
+    
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    
+    session = web_db.get_session()
+    try:
+        user.approval_status = 'rejected'
+        session.merge(user)
+        session.commit()
+        
+        return jsonify({'success': True, 'message': f'已拒絕用戶 {username}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    finally:
+        session.close()
+
+@app.route('/api/change-username', methods=['POST'])
+@login_required
+def change_username():
+    """修改用戶名"""
+    data = request.json
+    new_username = data.get('new_username', '').strip()
+    
+    if not new_username or len(new_username) < 3:
+        return jsonify({'error': '用戶名至少3個字符'}), 400
+    
+    web_db, _ = get_databases()
+    
+    # 檢查新用戶名是否已存在
+    existing = web_db.get_user_by_username(new_username)
+    if existing:
+        return jsonify({'error': '此用戶名已被使用'}), 400
+    
+    session = web_db.get_session()
+    try:
+        user = session.query(WebUser).filter_by(id=current_user.id).first()
+        if not user:
+            return jsonify({'error': '用戶不存在'}), 404
+        
+        user.username = new_username
+        session.commit()
+        
+        return jsonify({'success': True, 'message': '用戶名已更改'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    finally:
+        session.close()
 
 @app.route('/logout')
 @login_required

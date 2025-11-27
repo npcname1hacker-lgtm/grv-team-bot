@@ -23,7 +23,12 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="username" class="form-label">用戶名</label>
-                                <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="username" value="{{ user.username }}">
+                                    <button type="button" class="btn btn-outline-primary" onclick="changeUsername()">
+                                        <i class="fas fa-edit"></i> 修改
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -219,6 +224,40 @@ function unlinkDiscord() {
         })
         .catch(error => console.error('Error:', error));
     }
+}
+
+function changeUsername() {
+    const newUsername = document.getElementById('username').value.trim();
+    const currentUsername = '{{ user.username }}';
+    
+    if (newUsername === currentUsername) {
+        alert('新用戶名與原用戶名相同');
+        return;
+    }
+    
+    if (!newUsername || newUsername.length < 3) {
+        alert('用戶名至少3個字符');
+        return;
+    }
+    
+    fetch('/api/change-username', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            new_username: newUsername
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('用戶名已更改！正在重新加載...');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alert('修改失敗：' + data.error);
+        }
+    });
 }
 
 function changePassword() {
