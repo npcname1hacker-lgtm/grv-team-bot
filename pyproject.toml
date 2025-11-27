@@ -10,6 +10,7 @@ dependencies = [
     "flask-login>=0.6.3",
     "flask-sqlalchemy>=3.1.1",
     "psycopg2-binary>=2.9.10",
+    "pynacl>=1.6.1",
     "python-dotenv>=1.1.1",
     "requests>=2.32.5",
     "sqlalchemy>=2.0.43",

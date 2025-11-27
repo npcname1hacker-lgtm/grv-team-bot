@@ -1218,29 +1218,51 @@ def join_voice_channel():
         if not channel_id:
             return jsonify({'error': '缺少頻道ID'}), 400
         
-        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
-            async def do_join():
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未初始化'}), 400
+        
+        if discord_bot_instance.bot.is_closed():
+            return jsonify({'error': '機器人未連接'}), 503
+        
+        async def do_join():
+            try:
                 bot = discord_bot_instance.bot
                 channel = bot.get_channel(channel_id)
-                if channel and isinstance(channel, discord.VoiceChannel):
-                    try:
-                        await channel.connect()
-                        return True
-                    except:
-                        return False
-                return False
-            
-            result = asyncio.run_coroutine_threadsafe(
-                do_join(),
-                discord_bot_instance.bot.loop
-            ).result()
-            
-            if result:
-                return jsonify({'success': True, 'message': '機器人已加入'})
+                
+                if not channel:
+                    return False, f'找不到頻道 {channel_id}'
+                
+                if not isinstance(channel, discord.VoiceChannel):
+                    return False, '這不是語音頻道'
+                
+                # 檢查機器人是否已在頻道中
+                if channel.guild.voice_client:
+                    if channel.guild.voice_client.channel == channel:
+                        return False, '機器人已在此頻道'
+                    else:
+                        # 移到新頻道
+                        await channel.guild.voice_client.move_to(channel)
+                        return True, '已移到此頻道'
+                
+                # 連接到頻道
+                await channel.connect()
+                return True, '已加入頻道'
+            except Exception as e:
+                print(f"語音加入錯誤: {str(e)}")
+                return False, str(e)
         
-        return jsonify({'error': '操作失敗'}), 400
+        result, message = asyncio.run_coroutine_threadsafe(
+            do_join(),
+            discord_bot_instance.bot.loop
+        ).result(timeout=10)
+        
+        if result:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'error': message}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        print(f"加入語音頻道異常: {str(e)}")
+        return jsonify({'error': f'系統錯誤: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
