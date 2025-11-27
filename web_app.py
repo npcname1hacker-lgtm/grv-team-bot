@@ -180,7 +180,7 @@ def register():
     return render_template('register.html')
 
 async def send_account_approval_request(username, user_ip):
-    """發送帳號審核申請到隊長DM"""
+    """發送帳號審核申請到隊長DM（附帶批准/拒絕按鈕）"""
     try:
         web_db, _ = get_databases()
         admins = web_db.get_admin_users()
@@ -204,8 +204,52 @@ async def send_account_approval_request(username, user_ip):
 IP：{user_ip}
 時間：{current_time}（台灣時間）"""
         
-        await user.send(message)
-        print(f"✓ 已發送審核申請DM給隊長: {username}")
+        # 創建帶按鈕的View
+        class ApprovalView(discord.ui.View):
+            def __init__(self, username):
+                super().__init__(timeout=None)
+                self.username = username
+            
+            @discord.ui.button(label="✅ 批准", style=discord.ButtonStyle.green)
+            async def approve_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+                try:
+                    web_db, _ = get_databases()
+                    session = web_db.get_session()
+                    try:
+                        acc = session.query(WebUser).filter_by(username=self.username).first()
+                        if acc:
+                            acc.is_approved = True
+                            acc.approval_status = 'approved'
+                            session.commit()
+                            await interaction.response.send_message(f"✅ 已批准用戶 {self.username}！", ephemeral=True)
+                        else:
+                            await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
+                    finally:
+                        session.close()
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ 批准失敗: {str(e)}", ephemeral=True)
+            
+            @discord.ui.button(label="❌ 拒絕", style=discord.ButtonStyle.red)
+            async def reject_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+                try:
+                    web_db, _ = get_databases()
+                    session = web_db.get_session()
+                    try:
+                        acc = session.query(WebUser).filter_by(username=self.username).first()
+                        if acc:
+                            acc.approval_status = 'rejected'
+                            session.commit()
+                            await interaction.response.send_message(f"❌ 已拒絕用戶 {self.username}！", ephemeral=True)
+                        else:
+                            await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
+                    finally:
+                        session.close()
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ 拒絕失敗: {str(e)}", ephemeral=True)
+        
+        view = ApprovalView(username)
+        await user.send(message, view=view)
+        print(f"✓ 已發送審核申請DM給隊長: {username}（附帶批准/拒絕按鈕）")
         
     except Exception as e:
         print(f"✗ 發送審核申請失敗: {str(e)}")
