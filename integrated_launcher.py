@@ -10,10 +10,11 @@ import threading
 import time
 import os
 
-# Emergency database configuration for disabled Neon endpoints
-database_url = os.getenv('DATABASE_URL', '')
-if database_url and 'ep-ancient-waterfall' in database_url:
-    os.environ['DATABASE_URL'] = f"postgresql://{os.getenv('PGUSER', 'postgres')}:@127.0.0.1:5432/{os.getenv('PGDATABASE', 'postgres')}"
+# Force SQLite if PostgreSQL is not available (development fallback)
+db_url = os.getenv('DATABASE_URL', '')
+if not db_url or 'ep-ancient-waterfall' in db_url:
+    os.environ['DATABASE_URL'] = 'sqlite:////tmp/grv_team.db'
+    os.environ['FORCE_SQLITE'] = '1'
 
 from bot import DiscordBot
 from web_app import app, set_bot_instance

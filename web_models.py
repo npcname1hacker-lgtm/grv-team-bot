@@ -85,15 +85,17 @@ class WebDatabaseManager:
     """網站資料庫管理器"""
     
     def __init__(self):
-        self.database_url = os.getenv('DATABASE_URL')
-        if not self.database_url:
-            raise ValueError("未設置DATABASE_URL環境變數")
+        import os
+        self.database_url = os.getenv('DATABASE_URL', 'sqlite:////tmp/grv_team_web.db')
         
-        # Emergency fix: If old Neon endpoint is disabled, use localhost
-        if 'ep-ancient-waterfall' in self.database_url:
-            self.database_url = f"postgresql://{os.getenv('PGUSER', 'postgres')}:@127.0.0.1:5432/{os.getenv('PGDATABASE', 'postgres')}"
+        # Ensure SQLite is used if database is not available
+        if 'sqlite' not in self.database_url:
+            if not self.database_url or 'ep-ancient-waterfall' in self.database_url:
+                self.database_url = 'sqlite:////tmp/grv_team_web.db'
         
-        self.engine = create_engine(self.database_url)
+        # Configure SQLAlchemy for SQLite compatibility
+        kwargs = {'check_same_thread': False} if 'sqlite' in self.database_url else {}
+        self.engine = create_engine(self.database_url, connect_args=kwargs)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
         # 創建所有表格
