@@ -130,15 +130,12 @@ def register():
             flash('密碼至少6個字符', 'error')
             return render_template('register.html')
         
-        # 檢查用戶名是否已存在
+        # 檢查用戶名是否已存在（只檢查批准或待審核的）
         web_db, _ = get_databases()
         existing_user = web_db.get_user_by_username(username)
-        if existing_user:
+        if existing_user and existing_user.approval_status != 'rejected':
             flash('用戶名已被使用，請選擇其他用戶名', 'error')
             return render_template('register.html')
-        
-        # 獲取用戶IP
-        user_ip = request.remote_addr or 'Unknown'
         
         # 創建新用戶（is_approved=False，需要隊長審核）
         try:
@@ -151,7 +148,6 @@ def register():
                     is_active=True,
                     is_approved=False,  # 待審核
                     approval_status='pending',
-                    user_ip=user_ip,
                     created_by='self_register',
                     created_at=datetime.utcnow()
                 )
@@ -163,7 +159,7 @@ def register():
                 if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
                     try:
                         asyncio.run_coroutine_threadsafe(
-                            send_account_approval_request(username, user_ip),
+                            send_account_approval_request(username),
                             discord_bot_instance.bot.loop
                         )
                     except Exception as e:
@@ -179,7 +175,7 @@ def register():
     
     return render_template('register.html')
 
-async def send_account_approval_request(username, user_ip):
+async def send_account_approval_request(username):
     """發送帳號審核申請到隊長DM（附帶批准/拒絕按鈕）"""
     try:
         web_db, _ = get_databases()
@@ -201,7 +197,6 @@ async def send_account_approval_request(username, user_ip):
         message = f"""機器人面板申請！！
 
 名稱：{username}
-IP：{user_ip}
 時間：{current_time}（台灣時間）"""
         
         # 創建帶按鈕的View
@@ -222,6 +217,9 @@ IP：{user_ip}
                             acc.approval_status = 'approved'
                             session.commit()
                             await interaction.response.send_message(f"✅ 已批准用戶 {self.username}！", ephemeral=True)
+                            # 禁用按鈕
+                            button.disabled = True
+                            await interaction.message.edit(view=self.view)
                         else:
                             await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
                     finally:
@@ -237,9 +235,13 @@ IP：{user_ip}
                     try:
                         acc = session.query(WebUser).filter_by(username=self.username).first()
                         if acc:
-                            acc.approval_status = 'rejected'
+                            # 刪除帳號而不是只改狀態，讓用戶可以重新用同一用戶名註冊
+                            session.delete(acc)
                             session.commit()
-                            await interaction.response.send_message(f"❌ 已拒絕用戶 {self.username}！", ephemeral=True)
+                            await interaction.response.send_message(f"❌ 已拒絕用戶 {self.username}，帳號已刪除！", ephemeral=True)
+                            # 禁用按鈕
+                            button.disabled = True
+                            await interaction.message.edit(view=self.view)
                         else:
                             await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
                     finally:

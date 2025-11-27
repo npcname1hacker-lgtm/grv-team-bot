@@ -32,7 +32,6 @@ class WebUser(Base, UserMixin):
     is_active = Column(Boolean, default=True)
     is_approved = Column(Boolean, default=False)  # 是否已通過隊長審核
     approval_status = Column(String(50), default="pending")  # pending/approved/rejected
-    user_ip = Column(String(50))  # 註冊時的IP
     last_login = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(50))  # 創建者用戶名
