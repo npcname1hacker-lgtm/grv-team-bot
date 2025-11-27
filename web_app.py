@@ -1232,6 +1232,7 @@ def join_voice_channel():
             return jsonify({'error': '機器人未連接'}), 503
         
         async def do_join():
+            global global_voice_client
             try:
                 import traceback
                 bot = discord_bot_instance.bot
@@ -1249,30 +1250,39 @@ def join_voice_channel():
                 if channel.guild.voice_client:
                     print(f"[JOIN] 機器人已有語音客戶端")
                     if channel.guild.voice_client.channel == channel:
-                        set_voice_client(channel.guild.voice_client)
+                        global_voice_client = channel.guild.voice_client
                         return False, '機器人已在此頻道'
                     else:
                         # 移到新頻道
                         print(f"[JOIN] 移到新頻道")
                         await channel.guild.voice_client.move_to(channel)
-                        set_voice_client(channel.guild.voice_client)
+                        global_voice_client = channel.guild.voice_client
                         return True, '已移到此頻道'
                 
                 # 連接到頻道
                 print(f"[JOIN] 開始連接到頻道...")
+                voice_client = None
                 try:
                     voice_client = await channel.connect(timeout=10)
                     print(f"[JOIN] 成功連接到頻道! voice_client={voice_client}")
-                    set_voice_client(voice_client)
+                    if voice_client:
+                        global_voice_client = voice_client
+                        print(f"[GLOBAL] 設置語音客戶端成功")
                     await asyncio.sleep(0.5)  # 稍等以確保連接穩定
                     return True, '已加入頻道'
-                except asyncio.TimeoutError:
+                except asyncio.TimeoutError as te:
+                    print(f"[JOIN] 連接超時: {str(te)}")
                     return False, '連接超時'
                 except discord.ClientException as ce:
                     print(f"[JOIN] Discord 客戶端異常: {str(ce)}")
                     return False, f'Discord 異常: {str(ce)}'
+                except Exception as inner_err:
+                    print(f"[JOIN] 連接異常: {str(inner_err)}")
+                    import traceback as tb
+                    print(tb.format_exc())
+                    return False, str(inner_err)
             except Exception as e:
-                print(f"[JOIN] 語音加入錯誤: {str(e)}")
+                print(f"[JOIN] 外層異常: {str(e)}")
                 import traceback
                 print(traceback.format_exc())
                 return False, str(e)
