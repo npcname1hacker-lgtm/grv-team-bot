@@ -1126,5 +1126,121 @@ def list_sensitive_words():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+@app.route('/api/channels/text-channels')
+@login_required
+def get_text_channels():
+    """獲取所有文字頻道"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot') or discord_bot_instance.bot.is_closed():
+        return jsonify({'error': '機器人未連接'}), 503
+    
+    channels = []
+    for guild in discord_bot_instance.bot.guilds:
+        for channel in guild.text_channels:
+            channels.append({
+                'id': str(channel.id),
+                'name': f'#{channel.name}',
+                'guild_name': guild.name
+            })
+    
+    return jsonify({'channels': channels})
+
+@app.route('/api/channels/voice-channels')
+@login_required
+def get_voice_channels():
+    """獲取所有語音頻道"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot') or discord_bot_instance.bot.is_closed():
+        return jsonify({'error': '機器人未連接'}), 503
+    
+    channels = []
+    for guild in discord_bot_instance.bot.guilds:
+        for channel in guild.voice_channels:
+            channels.append({
+                'id': str(channel.id),
+                'name': channel.name,
+                'guild_name': guild.name
+            })
+    
+    return jsonify({'channels': channels})
+
+@app.route('/api/channels/<int:channel_id>/members')
+@login_required
+def get_channel_members(channel_id):
+    """獲取頻道內的成員"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot') or discord_bot_instance.bot.is_closed():
+        return jsonify({'error': '機器人未連接'}), 503
+    
+    try:
+        channel = discord_bot_instance.bot.get_channel(channel_id)
+        if not channel:
+            return jsonify({'error': '找不到頻道'}), 404
+        
+        members = []
+        if isinstance(channel, discord.VoiceChannel):
+            for member in channel.members:
+                members.append({
+                    'id': str(member.id),
+                    'name': member.name,
+                    'nick': member.nick or member.name
+                })
+        else:
+            guild = channel.guild
+            for member in guild.members:
+                members.append({
+                    'id': str(member.id),
+                    'name': member.name,
+                    'nick': member.nick or member.name
+                })
+        
+        return jsonify({'members': members})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/join', methods=['POST'])
+@login_required
+def join_voice_channel():
+    """機器人加入語音頻道"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    try:
+        data = request.json
+        channel_id = int(data.get('channel_id', 0))
+        
+        if not channel_id:
+            return jsonify({'error': '缺少頻道ID'}), 400
+        
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            async def do_join():
+                bot = discord_bot_instance.bot
+                channel = bot.get_channel(channel_id)
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    try:
+                        await channel.connect()
+                        return True
+                    except:
+                        return False
+                return False
+            
+            result = asyncio.run_coroutine_threadsafe(
+                do_join(),
+                discord_bot_instance.bot.loop
+            ).result()
+            
+            if result:
+                return jsonify({'success': True, 'message': '機器人已加入'})
+        
+        return jsonify({'error': '操作失敗'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

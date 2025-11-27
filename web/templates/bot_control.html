@@ -109,7 +109,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="textChannelSelect" class="form-label">選擇頻道</label>
-                        <select class="form-control" id="textChannelSelect">
+                        <select class="form-control" id="textChannelSelect" onchange="loadTextChannelMembers()">
                             <option value="">選擇頻道...</option>
                         </select>
                     </div>
@@ -144,7 +144,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="voiceChannelSelect" class="form-label">選擇語音頻道</label>
-                        <select class="form-control" id="voiceChannelSelect">
+                        <select class="form-control" id="voiceChannelSelect" onchange="loadVoiceChannelMembers()">
                             <option value="">選擇語音頻道...</option>
                         </select>
                     </div>
@@ -156,6 +156,9 @@
                     </div>
                 </div>
                 <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-success" onclick="joinVoiceChannel()">
+                        <i class="fas fa-sign-in-alt"></i> 加入
+                    </button>
                     <button type="button" class="btn btn-info" onclick="muteVoiceUser()">
                         <i class="fas fa-volume-mute"></i> 禁言
                     </button>
@@ -463,10 +466,136 @@ async function loadChannels() {
     }
 }
 
+// 載入文字頻道
+async function loadTextChannels() {
+    try {
+        const response = await fetch('/api/channels/text-channels');
+        const data = await response.json();
+        
+        const select = document.getElementById('textChannelSelect');
+        select.innerHTML = '<option value="">選擇頻道...</option>';
+        
+        if (data.channels) {
+            data.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `${channel.guild_name} - ${channel.name}`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('載入文字頻道失敗:', error);
+    }
+}
+
+// 載入語音頻道
+async function loadVoiceChannels() {
+    try {
+        const response = await fetch('/api/channels/voice-channels');
+        const data = await response.json();
+        
+        const select = document.getElementById('voiceChannelSelect');
+        select.innerHTML = '<option value="">選擇語音頻道...</option>';
+        
+        if (data.channels) {
+            data.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `${channel.guild_name} - ${channel.name}`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('載入語音頻道失敗:', error);
+    }
+}
+
+// 載入文字頻道成員
+async function loadTextChannelMembers() {
+    const channelId = document.getElementById('textChannelSelect').value;
+    if (!channelId) {
+        document.getElementById('userToModerate').innerHTML = '<option value="">選擇成員...</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/channels/${channelId}/members`);
+        const data = await response.json();
+        
+        const select = document.getElementById('userToModerate');
+        select.innerHTML = '<option value="">選擇成員...</option>';
+        
+        if (data.members) {
+            data.members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.nick;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('載入文字頻道成員失敗:', error);
+    }
+}
+
+// 載入語音頻道成員
+async function loadVoiceChannelMembers() {
+    const channelId = document.getElementById('voiceChannelSelect').value;
+    if (!channelId) {
+        document.getElementById('voiceUserToModerate').innerHTML = '<option value="">選擇成員...</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/channels/${channelId}/members`);
+        const data = await response.json();
+        
+        const select = document.getElementById('voiceUserToModerate');
+        select.innerHTML = '<option value="">選擇成員...</option>';
+        
+        if (data.members) {
+            data.members.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.nick;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('載入語音頻道成員失敗:', error);
+    }
+}
+
+// 機器人加入語音頻道
+function joinVoiceChannel() {
+    const channelId = document.getElementById('voiceChannelSelect').value;
+    if (!channelId) {
+        alert('請選擇語音頻道');
+        return;
+    }
+    
+    fetch('/api/voice/join', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channelId})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('機器人已加入！');
+            setTimeout(loadVoiceChannelMembers, 1000);
+        } else {
+            alert('加入失敗: ' + data.error);
+        }
+    });
+}
+
 // 頁面載入時檢查機器人狀態和載入頻道
 window.onload = function() {
     checkBotStatus();
     loadChannels();
+    loadTextChannels();
+    loadVoiceChannels();
     {% if current_user.role.name == 'HIGH' %}
     loadSensitiveWords();
     {% endif %}
