@@ -603,6 +603,15 @@ wheels = [
 ]
 
 [[package]]
+name = "lavalink"
+version = "5.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/da/6be2f013a2c63d7b139b2bfa9de4cbf715cbb68f74cf9ed76c85a87aece2/lavalink-5.9.0.tar.gz", hash = "sha256:a01aff4bdf25a51387d2d7729e110a8ced442c21da558dccdceffbc1e0f3861d", size = 52091, upload-time = "2024-09-22T14:06:49.059Z" }
+
+[[package]]
 name = "markupsafe"
 version = "3.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -921,6 +930,7 @@ dependencies = [
     { name = "flask" },
     { name = "flask-login" },
     { name = "flask-sqlalchemy" },
+    { name = "lavalink" },
     { name = "psycopg2-binary" },
     { name = "pynacl" },
     { name = "python-dotenv" },
@@ -937,6 +947,7 @@ requires-dist = [
     { name = "flask", specifier = ">=3.1.2" },
     { name = "flask-login", specifier = ">=0.6.3" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
+    { name = "lavalink", specifier = ">=5.9.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pynacl", specifier = ">=1.6.1" },
     { name = "python-dotenv", specifier = ">=1.1.1" },

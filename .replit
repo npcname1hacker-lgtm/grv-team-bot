@@ -11,7 +11,7 @@ integrations = [
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "espeak", "ffmpeg", "libiconv", "libsodium", "rustc"]
+packages = ["cargo", "espeak", "ffmpeg", "libiconv", "libsodium", "rustc", "openjdk21"]
 
 [workflows]
 runButton = "Project"
@@ -36,7 +36,3 @@ args = "python integrated_launcher.py"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 39625
-externalPort = 3000

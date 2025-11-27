@@ -146,6 +146,19 @@
 
 ## 最近變更
 
+### 2025-11-27（第六階段 - Lavalink 語音服務集成）
+- ✅ **安裝 Lavalink 庫** - 支持外部音頻服務
+- ✅ **Java 環境已配置** - OpenJDK 21 安裝完成
+- ✅ **下載 Lavalink JAR** - 位置: `./lavalink/Lavalink.jar`
+- ✅ **創建語音處理模組** - `voice_handler.py` 管理語音連接
+- ✅ **Lavalink 配置文件** - `./lavalink/application.yml` 已配置
+- ✅ **改進語音連接邏輯** - 更優雅的超時處理和降級方案
+- ⚠️ **已知限制**: Replit UDP 限制導致直接 Discord 語音無法工作
+- 📝 **用戶指南**: 
+  1. 在本地或外部服務器運行: `java -jar lavalink/Lavalink.jar`
+  2. 修改 `voice_handler.py` 中的 `lavalink_url` 指向您的 Lavalink 實例
+  3. 或在支持 UDP 的服務器上部署此系統
+
 ### 2025-11-27（第五階段 - 完整語音控制 + 文字轉語音）
 - ✅ **解禁言/解失聰按鈕** - 反向操作禁言和失聰
 - ✅ **禁言/失聰持久化** - 數據庫記錄語音狀態

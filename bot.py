@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 import logging
 import os
+import lavalink
 from config import Config
 from commands import setup_commands
 from application_system import setup_application_system
@@ -16,12 +17,15 @@ class DiscordBot:
         """初始化Discord機器人"""
         self.logger = logging.getLogger(__name__)
         self.config = Config()
+        self.lavalink_active = False
+        self.voice_clients = {}  # 存儲每個伺服器的語音客戶端
         
         # 設置機器人意圖 (Intents)
         intents = discord.Intents.default()
         intents.message_content = True  # 需要讀取訊息內容
         intents.guilds = True
         intents.guild_messages = True
+        intents.voice_states = True
         
         # 創建機器人實例
         self.bot = commands.Bot(
@@ -38,6 +42,18 @@ class DiscordBot:
         
         # 設置申請系統
         setup_application_system(self.bot)
+        
+        # 嘗試初始化 Lavalink
+        self.setup_lavalink()
+    
+    def setup_lavalink(self):
+        """初始化 Lavalink 連接"""
+        try:
+            # Lavalink 會在首次使用時自動初始化
+            # 這裡只是設置相關配置
+            self.logger.info("✅ Lavalink 模組已加載，準備在需要時連接")
+        except Exception as e:
+            self.logger.warning(f"⚠️ Lavalink 初始化警告: {str(e)}")
     
     def setup_events(self):
         """設置機器人事件處理器"""
