@@ -1382,44 +1382,73 @@ def voice_text_to_speech():
         
         async def do_tts():
             try:
+                import subprocess
+                import tempfile
+                import os
+                import time
+                
                 bot = discord_bot_instance.bot
                 for guild in bot.guilds:
-                    if guild.voice_client:
-                        # 簡單實現：使用內置的ffmpeg播放（先保存為文件）
-                        import subprocess
-                        import tempfile
-                        import os
-                        
-                        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
-                            temp_file = f.name
-                        
+                    if guild.voice_client and guild.voice_client.is_connected():
                         try:
-                            # 使用espeak或gtts生成音頻
-                            subprocess.run(['espeak', '-w', temp_file, text], check=False)
-                            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
-                                source = discord.FFmpegPCMAudio(temp_file)
-                                guild.voice_client.play(source)
-                                return True, '正在播放'
-                        except:
-                            pass
-                        finally:
-                            try:
-                                os.remove(temp_file)
-                            except:
-                                pass
+                            # 生成臨時 WAV 文件
+                            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                                temp_file = f.name
+                            
+                            # 使用 espeak 生成語音
+                            result = subprocess.run(
+                                ['espeak', '-w', temp_file, '-l', 'zh', text],
+                                capture_output=True,
+                                timeout=5
+                            )
+                            
+                            # 檢查文件是否生成成功
+                            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 1000:
+                                try:
+                                    # 如果已經在播放，等待完成
+                                    if guild.voice_client.is_playing():
+                                        while guild.voice_client.is_playing():
+                                            await asyncio.sleep(0.1)
+                                    
+                                    # 播放音頻
+                                    source = discord.FFmpegPCMAudio(temp_file)
+                                    guild.voice_client.play(source)
+                                    
+                                    # 等待播放完成
+                                    while guild.voice_client.is_playing():
+                                        await asyncio.sleep(0.1)
+                                    
+                                    return True, '播放完成'
+                                except Exception as play_err:
+                                    return False, f'播放失敗: {str(play_err)}'
+                                finally:
+                                    try:
+                                        os.remove(temp_file)
+                                    except:
+                                        pass
+                            else:
+                                return False, '文字轉語音生成失敗'
+                        except subprocess.TimeoutExpired:
+                            return False, '文字轉語音超時'
+                        except Exception as guild_err:
+                            return False, str(guild_err)
                 
                 return False, '機器人未連接語音頻道'
             except Exception as e:
-                return False, str(e)
+                import traceback
+                return False, f'系統錯誤: {str(e)}'
         
         result, message = asyncio.run_coroutine_threadsafe(
             do_tts(),
             discord_bot_instance.bot.loop
-        ).result(timeout=10)
+        ).result(timeout=15)
         
         return jsonify({'success': result, 'message': message})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        print(f"TTS 異常: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': f'系統錯誤: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
