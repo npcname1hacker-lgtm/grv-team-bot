@@ -60,11 +60,18 @@ def require_role(required_role):
 
 # 獲取機器人實例的全局變數
 discord_bot_instance = None
+global_voice_client = None  # 全局語音客戶端（用於 TTS）
 
 def set_bot_instance(bot):
     """設置機器人實例以供網站使用"""
     global discord_bot_instance
     discord_bot_instance = bot
+
+def set_voice_client(vc):
+    """設置全局語音客戶端"""
+    global global_voice_client
+    global_voice_client = vc
+    print(f"[GLOBAL] 設置語音客戶端: {vc}")
 
 @app.route('/')
 def index():
@@ -1226,6 +1233,7 @@ def join_voice_channel():
         
         async def do_join():
             try:
+                import traceback
                 bot = discord_bot_instance.bot
                 channel = bot.get_channel(channel_id)
                 
@@ -1235,20 +1243,34 @@ def join_voice_channel():
                 if not isinstance(channel, discord.VoiceChannel):
                     return False, '這不是語音頻道'
                 
+                print(f"[JOIN] 嘗試加入頻道: {channel.name}")
+                
                 # 檢查機器人是否已在頻道中
                 if channel.guild.voice_client:
+                    print(f"[JOIN] 機器人已有語音客戶端")
                     if channel.guild.voice_client.channel == channel:
                         return False, '機器人已在此頻道'
                     else:
                         # 移到新頻道
+                        print(f"[JOIN] 移到新頻道")
                         await channel.guild.voice_client.move_to(channel)
                         return True, '已移到此頻道'
                 
                 # 連接到頻道
-                await channel.connect()
-                return True, '已加入頻道'
+                print(f"[JOIN] 開始連接到頻道...")
+                try:
+                    voice_client = await channel.connect(timeout=10)
+                    print(f"[JOIN] 成功連接到頻道! voice_client={voice_client}")
+                    return True, '已加入頻道'
+                except asyncio.TimeoutError:
+                    return False, '連接超時'
+                except discord.ClientException as ce:
+                    print(f"[JOIN] Discord 客戶端異常: {str(ce)}")
+                    return False, f'Discord 異常: {str(ce)}'
             except Exception as e:
-                print(f"語音加入錯誤: {str(e)}")
+                print(f"[JOIN] 語音加入錯誤: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
                 return False, str(e)
         
         result, message = asyncio.run_coroutine_threadsafe(
@@ -1389,9 +1411,12 @@ def voice_text_to_speech():
                 bot = discord_bot_instance.bot
                 found_voice_client = False
                 
+                print(f"[TTS] 開始查找語音客戶端，總伺服器數: {len(bot.guilds)}")
+                
                 for guild in bot.guilds:
-                    if guild.voice_client and guild.voice_client.is_connected():
-                        found_voice_client = True
+                    print(f"[TTS] 檢查伺服器: {guild.name}, voice_client: {guild.voice_client}, is_connected: {guild.voice_client.is_connected() if guild.voice_client else 'None'}")
+                    
+                    if guild.voice_client:
                         print(f"[TTS] 找到語音客戶端，伺服器: {guild.name}")
                         
                         try:
