@@ -1261,26 +1261,23 @@ def join_voice_channel():
                 
                 # 連接到頻道
                 print(f"[JOIN] 開始連接到頻道...")
-                voice_client = None
                 try:
                     voice_client = await channel.connect(timeout=10)
-                    print(f"[JOIN] 成功連接到頻道! voice_client={voice_client}")
-                    if voice_client:
-                        global_voice_client = voice_client
-                        print(f"[GLOBAL] 設置語音客戶端成功")
-                    await asyncio.sleep(0.5)  # 稍等以確保連接穩定
-                    return True, '已加入頻道'
+                    print(f"[JOIN] connect() 返回: {voice_client}")
                 except asyncio.TimeoutError as te:
-                    print(f"[JOIN] 連接超時: {str(te)}")
-                    return False, '連接超時'
-                except discord.ClientException as ce:
-                    print(f"[JOIN] Discord 客戶端異常: {str(ce)}")
-                    return False, f'Discord 異常: {str(ce)}'
-                except Exception as inner_err:
-                    print(f"[JOIN] 連接異常: {str(inner_err)}")
-                    import traceback as tb
-                    print(tb.format_exc())
-                    return False, str(inner_err)
+                    print(f"[JOIN] connect() 超時，嘗試使用 guild.voice_client...")
+                except Exception as e:
+                    print(f"[JOIN] connect() 異常: {str(e)}")
+                
+                # 無論 connect() 是否成功，嘗試從 guild.voice_client 獲取
+                await asyncio.sleep(1)  # 等待連接完全建立
+                if channel.guild.voice_client:
+                    global_voice_client = channel.guild.voice_client
+                    print(f"[GLOBAL] 成功獲取語音客戶端: {global_voice_client}")
+                    return True, '已加入頻道'
+                else:
+                    print(f"[JOIN] guild.voice_client 仍為 None")
+                    return False, '無法連接語音頻道'
             except Exception as e:
                 print(f"[JOIN] 外層異常: {str(e)}")
                 import traceback
