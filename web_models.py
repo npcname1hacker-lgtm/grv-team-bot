@@ -169,8 +169,16 @@ class WebDatabaseManager:
                 user.set_password(user_data['password'])
                 session.add(user)
             
-            session.commit()
-            print("已創建預設管理員賬號")
+            try:
+                session.commit()
+                print("已創建預設管理員賬號")
+            except Exception as e:
+                # 如果插入失敗（如重複用戶名），回滾並忽略
+                session.rollback()
+                if "UNIQUE constraint failed" in str(e):
+                    print("預設管理員賬號已存在，跳過創建")
+                else:
+                    print(f"初始化預設用戶出錯: {e}")
             
         finally:
             session.close()
