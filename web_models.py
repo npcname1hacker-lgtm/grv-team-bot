@@ -135,18 +135,25 @@ class WebDatabaseManager:
                     'username': 'admin0803',
                     'password': 'admin0803+0815',
                     'role': UserRole.HIGH,
+                    'discord_id': '1266626578696245281',  # 隊長Discord ID
+                    'is_approved': True,
+                    'approval_status': 'approved',
                     'created_by': 'system'
                 },
                 {
                     'username': 'admin0815', 
                     'password': 'admin-fan.wei.lun',
                     'role': UserRole.MEDIUM,
+                    'is_approved': True,
+                    'approval_status': 'approved',
                     'created_by': 'system'
                 },
                 {
                     'username': 'admin3',
                     'password': 'admin1331914', 
                     'role': UserRole.MEDIUM,
+                    'is_approved': True,
+                    'approval_status': 'approved',
                     'created_by': 'system'
                 }
             ]
@@ -155,6 +162,9 @@ class WebDatabaseManager:
                 user = WebUser(
                     username=user_data['username'],
                     role=user_data['role'],
+                    discord_id=user_data.get('discord_id'),
+                    is_approved=user_data.get('is_approved', True),
+                    approval_status=user_data.get('approval_status', 'approved'),
                     created_by=user_data['created_by']
                 )
                 user.set_password(user_data['password'])
