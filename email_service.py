@@ -311,5 +311,12 @@ class EmailService:
         except Exception as e:
             return False, f'郵件服務錯誤：{str(e)}'
 
-# 創建全局實例
-email_service = EmailService()
+# 延遲創建全局實例
+email_service = None
+
+def get_email_service():
+    """獲取郵件服務實例（延遲初始化）"""
+    global email_service
+    if email_service is None:
+        email_service = EmailService()
+    return email_service

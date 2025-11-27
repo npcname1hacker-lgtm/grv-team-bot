@@ -78,6 +78,9 @@ class SystemSettings(Base):
     updated_by = Column(String(50))
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+# 全局資料庫管理器實例
+_web_db_instance = None
+
 class WebDatabaseManager:
     """網站資料庫管理器"""
     
@@ -237,3 +240,10 @@ class WebDatabaseManager:
             return session.query(BotCommand).filter_by(is_active=True).all()
         finally:
             session.close()
+
+def get_web_database():
+    """獲取網站資料庫管理器（延遲初始化）"""
+    global _web_db_instance
+    if _web_db_instance is None:
+        _web_db_instance = WebDatabaseManager()
+    return _web_db_instance

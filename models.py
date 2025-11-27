@@ -98,3 +98,13 @@ class DatabaseManager:
             return False
         finally:
             session.close()
+
+# 全局資料庫管理器實例
+_bot_db_instance = None
+
+def get_bot_database():
+    """獲取機器人資料庫管理器（延遲初始化）"""
+    global _bot_db_instance
+    if _bot_db_instance is None:
+        _bot_db_instance = DatabaseManager()
+    return _bot_db_instance

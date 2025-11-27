@@ -13,9 +13,9 @@ import logging
 import os
 import json
 from datetime import datetime
-from web_models import WebDatabaseManager, WebUser, UserRole, BotCommand
-from models import DatabaseManager, TeamApplication
-from email_service import email_service
+from web_models import WebUser, UserRole, BotCommand, get_web_database
+from models import get_bot_database
+from email_service import get_email_service
 
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')
@@ -26,12 +26,14 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '請先登錄以訪問此頁面'
 
-# 資料庫管理器
-web_db = WebDatabaseManager()
-bot_db = DatabaseManager()
+# 延遲初始化的資料庫管理器
+def get_databases():
+    """獲取資料庫管理器實例"""
+    return get_web_database(), get_bot_database()
 
 @login_manager.user_loader
 def load_user(user_id):
+    web_db, _ = get_databases()
     return web_db.get_user_by_id(int(user_id))
 
 # 權限裝飾器
@@ -79,10 +81,12 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
+        web_db, _ = get_databases()
         user = web_db.get_user_by_username(username)
         
         if user and user.check_password(password):
             # 更新最後登錄時間
+            web_db, _ = get_databases()
             session = web_db.get_session()
             try:
                 user.last_login = datetime.utcnow()
@@ -113,6 +117,7 @@ def register():
             email = request.form.get('email')
             
             # 檢查郵箱是否已被使用
+            web_db, _ = get_databases()
             session = web_db.get_session()
             try:
                 existing_email = session.query(WebUser).filter_by(email=email).first()
@@ -122,7 +127,8 @@ def register():
                 session.close()
             
             # 發送驗證碼
-            success, message = email_service.send_verification_email(email, '註冊新帳號')
+            email_svc = get_email_service()
+            success, message = email_svc.send_verification_email(email, '註冊新帳號')
             return jsonify({'success': success, 'message': message})
         
         # 步驟2: 完成註冊
@@ -139,12 +145,14 @@ def register():
             return render_template('register.html')
         
         # 驗證驗證碼
-        code_valid, message = email_service.verify_code(email, verification_code)
+        email_svc = get_email_service()
+        code_valid, message = email_svc.verify_code(email, verification_code)
         if not code_valid:
             flash(f'驗證碼錯誤：{message}', 'error')
             return render_template('register.html')
         
         # 檢查用戶名是否已存在
+        web_db, _ = get_databases()
         existing_user = web_db.get_user_by_username(username)
         if existing_user:
             flash('用戶名已被使用，請選擇其他用戶名', 'error')
@@ -152,6 +160,7 @@ def register():
         
         # 創建新用戶（預設為LOW權限，需要隊長審核）
         try:
+            web_db, _ = get_databases()
             user_id = web_db.create_user(
                 username=username,
                 password=password,
@@ -197,6 +206,7 @@ def dashboard():
         return render_template('restricted.html')
     
     # 獲取基本統計
+    _, bot_db = get_databases()
     pending_applications = len(bot_db.get_pending_applications())
     
     # 獲取機器人狀態
@@ -218,6 +228,7 @@ def applications():
         flash('你的權限不夠，請去私信隊長來申請', 'error')
         return redirect(url_for('dashboard'))
     
+    _, bot_db = get_databases()
     applications = bot_db.get_pending_applications()
     return render_template('applications.html', applications=applications)
 
@@ -228,6 +239,7 @@ def approve_application(app_id):
     if current_user.role == UserRole.LOW:
         return jsonify({'error': '權限不足'}), 403
     
+    _, bot_db = get_databases()
     success = bot_db.update_application_status(app_id, 'approved', str(current_user.id))
     
     if success:
@@ -244,6 +256,7 @@ def reject_application(app_id):
         return jsonify({'error': '權限不足'}), 403
     
     reason = request.json.get('reason', '未提供原因')
+    _, bot_db = get_databases()
     success = bot_db.update_application_status(app_id, 'rejected', str(current_user.id), reason)
     
     if success:
@@ -256,6 +269,7 @@ def reject_application(app_id):
 @require_role(UserRole.HIGH)
 def users():
     """用戶管理頁面（隊長專用）"""
+    web_db, _ = get_databases()
     all_users = web_db.get_all_users()
     return render_template('users.html', users=all_users)
 
@@ -362,6 +376,7 @@ def settings():
 def update_user_profile():
     """更新用戶資料API"""
     data = request.json
+    web_db, _ = get_databases()
     session = web_db.get_session()
     
     try:
@@ -388,6 +403,7 @@ def change_password():
     if not current_user.check_password(old_password):
         return jsonify({'error': '原密碼錯誤'}), 400
     
+    web_db, _ = get_databases()
     success = web_db.change_user_password(current_user.id, new_password)
     if success:
         return jsonify({'success': True, 'message': '密碼已更新'})
@@ -405,6 +421,7 @@ def create_user():
     role = UserRole(data.get('role', 'medium'))
     
     try:
+        web_db, _ = get_databases()
         user_id = web_db.create_user(
             username=username,
             password=password,
@@ -424,6 +441,7 @@ def admin_change_password():
     user_id = data.get('user_id')
     new_password = data.get('new_password')
     
+    web_db, _ = get_databases()
     success = web_db.change_user_password(user_id, new_password)
     if success:
         return jsonify({'success': True, 'message': '密碼已更新'})
@@ -439,6 +457,7 @@ def update_user_role():
     user_id = data.get('user_id')
     new_role = UserRole(data.get('role'))
     
+    web_db, _ = get_databases()
     success = web_db.update_user_role(user_id, new_role)
     if success:
         return jsonify({'success': True, 'message': '權限已更新'})
