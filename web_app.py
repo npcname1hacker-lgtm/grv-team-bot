@@ -1385,41 +1385,55 @@ def voice_text_to_speech():
                 import subprocess
                 import tempfile
                 import os
-                import time
                 
                 bot = discord_bot_instance.bot
+                found_voice_client = False
+                
                 for guild in bot.guilds:
                     if guild.voice_client and guild.voice_client.is_connected():
+                        found_voice_client = True
+                        print(f"[TTS] 找到語音客戶端，伺服器: {guild.name}")
+                        
                         try:
                             # 生成臨時 WAV 文件
                             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
                                 temp_file = f.name
                             
-                            # 使用 espeak 生成語音
+                            print(f"[TTS] 生成文件: {temp_file}, 文本: {text}")
+                            
+                            # 使用 espeak 生成語音（不指定語言，讓 espeak 自動選擇）
                             result = subprocess.run(
-                                ['espeak', '-w', temp_file, '-l', 'zh', text],
+                                ['espeak', '-w', temp_file, text],
                                 capture_output=True,
                                 timeout=5
                             )
                             
+                            file_size = os.path.getsize(temp_file) if os.path.exists(temp_file) else 0
+                            print(f"[TTS] Espeak 返回碼: {result.returncode}, 文件大小: {file_size} bytes")
+                            
                             # 檢查文件是否生成成功
-                            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 1000:
+                            if os.path.exists(temp_file) and file_size > 100:
                                 try:
+                                    print(f"[TTS] 開始播放音頻")
+                                    
                                     # 如果已經在播放，等待完成
-                                    if guild.voice_client.is_playing():
-                                        while guild.voice_client.is_playing():
-                                            await asyncio.sleep(0.1)
+                                    max_wait = 0
+                                    while guild.voice_client.is_playing() and max_wait < 100:
+                                        await asyncio.sleep(0.1)
+                                        max_wait += 1
                                     
                                     # 播放音頻
                                     source = discord.FFmpegPCMAudio(temp_file)
                                     guild.voice_client.play(source)
                                     
-                                    # 等待播放完成
-                                    while guild.voice_client.is_playing():
-                                        await asyncio.sleep(0.1)
+                                    print(f"[TTS] 音頻已開始播放")
+                                    
+                                    # 短暫等待播放開始
+                                    await asyncio.sleep(1)
                                     
                                     return True, '播放完成'
                                 except Exception as play_err:
+                                    print(f"[TTS] 播放失敗: {str(play_err)}")
                                     return False, f'播放失敗: {str(play_err)}'
                                 finally:
                                     try:
@@ -1427,15 +1441,24 @@ def voice_text_to_speech():
                                     except:
                                         pass
                             else:
-                                return False, '文字轉語音生成失敗'
+                                print(f"[TTS] 文件生成失敗或大小太小: {file_size}")
+                                return False, f'文字轉語音生成失敗 (大小: {file_size})'
                         except subprocess.TimeoutExpired:
-                            return False, '文字轉語音超時'
+                            print(f"[TTS] Espeak 超時")
+                            return False, 'Espeak 超時'
                         except Exception as guild_err:
+                            print(f"[TTS] 伺服器錯誤: {str(guild_err)}")
                             return False, str(guild_err)
                 
-                return False, '機器人未連接語音頻道'
+                if not found_voice_client:
+                    print(f"[TTS] 未找到任何語音客戶端")
+                    return False, '機器人未連接語音頻道'
+                else:
+                    return False, '語音客戶端未連接'
             except Exception as e:
                 import traceback
+                print(f"[TTS] 異常: {str(e)}")
+                print(traceback.format_exc())
                 return False, f'系統錯誤: {str(e)}'
         
         result, message = asyncio.run_coroutine_threadsafe(
@@ -1446,7 +1469,7 @@ def voice_text_to_speech():
         return jsonify({'success': result, 'message': message})
     except Exception as e:
         import traceback
-        print(f"TTS 異常: {str(e)}")
+        print(f"[TTS] 外層異常: {str(e)}")
         print(traceback.format_exc())
         return jsonify({'error': f'系統錯誤: {str(e)}'}), 500
 
