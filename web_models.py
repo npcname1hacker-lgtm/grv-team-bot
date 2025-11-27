@@ -89,6 +89,10 @@ class WebDatabaseManager:
         if not self.database_url:
             raise ValueError("未設置DATABASE_URL環境變數")
         
+        # Emergency fix: If old Neon endpoint is disabled, use localhost
+        if 'ep-ancient-waterfall' in self.database_url:
+            self.database_url = f"postgresql://{os.getenv('PGUSER', 'postgres')}:@127.0.0.1:5432/{os.getenv('PGDATABASE', 'postgres')}"
+        
         self.engine = create_engine(self.database_url)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         

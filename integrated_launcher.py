@@ -8,6 +8,13 @@ import asyncio
 import logging
 import threading
 import time
+import os
+
+# Emergency database configuration for disabled Neon endpoints
+database_url = os.getenv('DATABASE_URL', '')
+if database_url and 'ep-ancient-waterfall' in database_url:
+    os.environ['DATABASE_URL'] = f"postgresql://{os.getenv('PGUSER', 'postgres')}:@127.0.0.1:5432/{os.getenv('PGDATABASE', 'postgres')}"
+
 from bot import DiscordBot
 from web_app import app, set_bot_instance
 
