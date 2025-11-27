@@ -1264,5 +1264,162 @@ def join_voice_channel():
         print(f"加入語音頻道異常: {str(e)}")
         return jsonify({'error': f'系統錯誤: {str(e)}'}), 500
 
+@app.route('/api/voice/leave', methods=['POST'])
+@login_required
+def leave_voice_channel():
+    """機器人退出語音頻道"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    try:
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未初始化'}), 400
+        
+        async def do_leave():
+            try:
+                bot = discord_bot_instance.bot
+                for guild in bot.guilds:
+                    if guild.voice_client:
+                        await guild.voice_client.disconnect()
+                        return True, '已退出語音頻道'
+                return False, '機器人未連接任何語音頻道'
+            except Exception as e:
+                return False, str(e)
+        
+        result, message = asyncio.run_coroutine_threadsafe(
+            do_leave(),
+            discord_bot_instance.bot.loop
+        ).result(timeout=10)
+        
+        return jsonify({'success': result, 'message': message})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/voice/unmute', methods=['POST'])
+@login_required
+def unmute_voice_user():
+    """解除用戶禁言"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    try:
+        data = request.json
+        user_id = int(data.get('user_id', 0))
+        channel_id = int(data.get('channel_id', 0))
+        
+        if not user_id or not channel_id:
+            return jsonify({'error': '缺少參數'}), 400
+        
+        async def do_unmute():
+            bot = discord_bot_instance.bot
+            channel = bot.get_channel(channel_id)
+            if channel and isinstance(channel, discord.VoiceChannel):
+                member = channel.guild.get_member(user_id)
+                if member and member in channel.members:
+                    await member.edit(mute=False)
+                    return True
+            return False
+        
+        result = asyncio.run_coroutine_threadsafe(
+            do_unmute(),
+            discord_bot_instance.bot.loop
+        ).result(timeout=10)
+        
+        return jsonify({'success': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/undeafen', methods=['POST'])
+@login_required
+def undeafen_voice_user():
+    """解除用戶失聰"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    try:
+        data = request.json
+        user_id = int(data.get('user_id', 0))
+        channel_id = int(data.get('channel_id', 0))
+        
+        if not user_id or not channel_id:
+            return jsonify({'error': '缺少參數'}), 400
+        
+        async def do_undeafen():
+            bot = discord_bot_instance.bot
+            channel = bot.get_channel(channel_id)
+            if channel and isinstance(channel, discord.VoiceChannel):
+                member = channel.guild.get_member(user_id)
+                if member and member in channel.members:
+                    await member.edit(deafen=False)
+                    return True
+            return False
+        
+        result = asyncio.run_coroutine_threadsafe(
+            do_undeafen(),
+            discord_bot_instance.bot.loop
+        ).result(timeout=10)
+        
+        return jsonify({'success': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/voice/tts', methods=['POST'])
+@login_required
+def voice_text_to_speech():
+    """文字轉語音 - 機器人在語音頻道說話"""
+    if current_user.role == UserRole.LOW:
+        return jsonify({'error': '權限不足'}), 403
+    
+    try:
+        data = request.json
+        text = data.get('text', '').strip()
+        
+        if not text:
+            return jsonify({'error': '文字不能為空'}), 400
+        
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未初始化'}), 400
+        
+        async def do_tts():
+            try:
+                bot = discord_bot_instance.bot
+                for guild in bot.guilds:
+                    if guild.voice_client:
+                        # 簡單實現：使用內置的ffmpeg播放（先保存為文件）
+                        import subprocess
+                        import tempfile
+                        import os
+                        
+                        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
+                            temp_file = f.name
+                        
+                        try:
+                            # 使用espeak或gtts生成音頻
+                            subprocess.run(['espeak', '-w', temp_file, text], check=False)
+                            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                                source = discord.FFmpegPCMAudio(temp_file)
+                                guild.voice_client.play(source)
+                                return True, '正在播放'
+                        except:
+                            pass
+                        finally:
+                            try:
+                                os.remove(temp_file)
+                            except:
+                                pass
+                
+                return False, '機器人未連接語音頻道'
+            except Exception as e:
+                return False, str(e)
+        
+        result, message = asyncio.run_coroutine_threadsafe(
+            do_tts(),
+            discord_bot_instance.bot.loop
+        ).result(timeout=10)
+        
+        return jsonify({'success': result, 'message': message})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

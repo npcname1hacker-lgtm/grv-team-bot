@@ -89,6 +89,18 @@ class SystemSettings(Base):
     updated_by = Column(String(50))
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class VoiceState(Base):
+    """語音狀態持久化表"""
+    __tablename__ = 'voice_states'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(50), nullable=False)
+    guild_id = Column(String(50), nullable=False)
+    is_muted = Column(Boolean, default=False)  # 禁言
+    is_deafened = Column(Boolean, default=False)  # 失聰
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 # 全局資料庫管理器實例
 _web_db_instance = None
 
