@@ -212,21 +212,8 @@ class DiscordBot:
                                 text_channel = ch
                                 break
                     
-                    # 發送警告訊息
-                    if text_channel and text_channel.permissions_for(guild.me).send_messages:
-                        warning_message = """⚠️ **語音頻道規則警告** ⚠️
-
-現在開始語音頻道由我管理，如有讓人有感覺到有不舒服的內容的話……
-
-1️⃣ **禁言是警告** - 1分鐘後才解除
-2️⃣ **第二次就直接踢出語音頻道**
-
-❌ **所以請不要說出讓人不舒服的內容，謝謝配合！**"""
-                        try:
-                            await text_channel.send(warning_message)
-                            self.logger.info(f'已在 {text_channel.name} 發送語音頻道警告訊息')
-                        except Exception as msg_err:
-                            self.logger.warning(f'發送警告訊息失敗: {str(msg_err)}')
+                    # 警告訊息已移除（不再發送）
+                    pass
             except Exception as e:
                 self.logger.warning(f'語音狀態更新事件出錯: {str(e)}')
     

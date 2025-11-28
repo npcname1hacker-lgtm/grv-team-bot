@@ -372,6 +372,12 @@ class ApplicationDetailView(discord.ui.View):
         modal = RejectReasonModal(self.application, self.db, self.bot)
         await interaction.response.send_modal(modal)
     
+    @discord.ui.button(label='🚪 關閉', style=discord.ButtonStyle.secondary)
+    async def close_application(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """關閉申請詳情"""
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+    
     async def send_welcome_message(self, guild):
         """發送歡迎訊息"""
         welcome_channel = discord.utils.get(guild.text_channels, name='歡迎')

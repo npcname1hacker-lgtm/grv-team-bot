@@ -272,7 +272,8 @@ def setup_commands(bot):
             # 實用指令
             utility_commands = [
                 "`!say <訊息>` - 讓機器人說話",
-                "`!clear [數量]` - 清除訊息 (需要權限)"
+                "`!clear [數量]` - 清除訊息 (需要權限)",
+                "`!tts <文字>` - 文字轉語音（須在語音頻道）"
             ]
             embed.add_field(name="🔧 實用指令", value="\n".join(utility_commands), inline=False)
             
@@ -482,6 +483,88 @@ def setup_commands(bot):
             embed = discord.Embed(
                 title="❌ 權限不足",
                 description="機器人沒有禁言成員的權限",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+    
+    @bot.command(name='tts', aliases=['說話', '文字轉語音'])
+    async def tts_command(ctx, *, text):
+        """文字轉語音 - 機器人在語音頻道中說話"""
+        # 檢查使用者是否在語音頻道
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            embed = discord.Embed(
+                title="❌ 您未在語音頻道中",
+                description="請先加入語音頻道再使用此指令",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # 檢查訊息長度
+        if len(text) > 500:
+            embed = discord.Embed(
+                title="❌ 文字太長",
+                description="文字不能超過500個字符",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        try:
+            import pyttsx3
+            import os
+            
+            # 初始化 TTS 引擎
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 150)  # 說話速度
+            
+            # 生成音頻文件
+            audio_file = f"/tmp/tts_{ctx.author.id}.mp3"
+            engine.save_to_file(text, audio_file)
+            engine.runAndWait()
+            
+            # 連接到語音頻道並播放
+            voice_channel = ctx.author.voice.channel
+            if ctx.voice_client is None:
+                vc = await voice_channel.connect()
+            else:
+                vc = ctx.voice_client
+                if vc.channel != voice_channel:
+                    await vc.move_to(voice_channel)
+            
+            # 播放音頻
+            if os.path.exists(audio_file):
+                source = discord.FFmpegPCMAudio(audio_file)
+                vc.play(source, after=lambda e: print(f'播放完成'))
+                
+                embed = discord.Embed(
+                    title="🎙️ 正在播放文字轉語音",
+                    description=f"**內容:** {text}",
+                    color=0x00ff00
+                )
+                await ctx.send(embed=embed)
+                
+                # 清理臨時文件
+                import asyncio
+                await asyncio.sleep(5)
+                try:
+                    os.remove(audio_file)
+                except:
+                    pass
+            else:
+                raise Exception("無法生成音頻文件")
+        
+        except ImportError:
+            embed = discord.Embed(
+                title="❌ 缺少依賴",
+                description="尚未安裝 pyttsx3 庫，請稍後重試",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ 文字轉語音失敗",
+                description=f"錯誤: {str(e)}",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
