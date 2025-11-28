@@ -2,6 +2,7 @@
 戰隊管理網站 - Flask後端應用
 提供完整的Discord機器人控制面板
 """
+# type: ignore
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session as flask_session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -25,7 +26,7 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')
 # Flask-Login設置
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login'  # type: ignore
 login_manager.login_message = '請先登錄以訪問此頁面'
 
 # 延遲初始化的資料庫管理器
@@ -95,7 +96,7 @@ def login():
         
         if user and user.check_password(password):
             # 檢查帳號是否通過審核
-            if not user.is_approved:
+            if not user.is_approved:  # type: ignore
                 flash('您的帳號還未通過隊長審核，請耐心等待', 'error')
                 return render_template('login.html')
             
@@ -103,7 +104,7 @@ def login():
             web_db, _ = get_databases()
             session = web_db.get_session()
             try:
-                user.last_login = datetime.utcnow()
+                user.last_login = datetime.utcnow()  # type: ignore
                 session.merge(user)
                 session.commit()
             finally:
@@ -140,7 +141,7 @@ def register():
         # 檢查用戶名是否已存在（只檢查批准或待審核的）
         web_db, _ = get_databases()
         existing_user = web_db.get_user_by_username(username)
-        if existing_user and existing_user.approval_status != 'rejected':
+        if existing_user and existing_user.approval_status != 'rejected':  # type: ignore
             flash('用戶名已被使用，請選擇其他用戶名', 'error')
             return render_template('register.html')
         
@@ -188,13 +189,13 @@ async def send_account_approval_request(username):
         web_db, _ = get_databases()
         admins = web_db.get_admin_users()
         
-        if not admins or not admins[0].discord_id:
+        if not admins or not admins[0].discord_id:  # type: ignore
             print(f"✗ 未找到隊長或隊長未綁定Discord ID")
             return
         
-        admin_discord_id = int(admins[0].discord_id)
-        bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance
-        user = await bot.fetch_user(admin_discord_id)
+        admin_discord_id = int(admins[0].discord_id)  # type: ignore
+        bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance  # type: ignore
+        user = await bot.fetch_user(admin_discord_id)  # type: ignore
         
         # 構建申請訊息
         from datetime import timezone, timedelta
@@ -220,13 +221,13 @@ async def send_account_approval_request(username):
                     try:
                         acc = session.query(WebUser).filter_by(username=self.username).first()
                         if acc:
-                            acc.is_approved = True
-                            acc.approval_status = 'approved'
+                            acc.is_approved = True  # type: ignore
+                            acc.approval_status = 'approved'  # type: ignore
                             session.commit()
                             await interaction.response.send_message(f"✅ 已批准用戶 {self.username}！", ephemeral=True)
                             # 禁用按鈕
                             button.disabled = True
-                            await interaction.message.edit(view=self.view)
+                            await interaction.message.edit(view=self.view)  # type: ignore
                         else:
                             await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
                     finally:
@@ -248,7 +249,7 @@ async def send_account_approval_request(username):
                             await interaction.response.send_message(f"❌ 已拒絕用戶 {self.username}，帳號已刪除！", ephemeral=True)
                             # 禁用按鈕
                             button.disabled = True
-                            await interaction.message.edit(view=self.view)
+                            await interaction.message.edit(view=self.view)  # type: ignore
                         else:
                             await interaction.response.send_message(f"❌ 找不到用戶 {self.username}", ephemeral=True)
                     finally:
@@ -268,8 +269,8 @@ async def send_account_approval_request(username):
 @require_role(UserRole.HIGH)
 def approve_account():
     """批准帳號"""
-    data = request.json
-    username = data.get('username', '')
+    data = request.json  # type: ignore
+    username = data.get('username', '')  # type: ignore
     
     web_db, _ = get_databases()
     user = web_db.get_user_by_username(username)
@@ -279,8 +280,8 @@ def approve_account():
     
     session = web_db.get_session()
     try:
-        user.is_approved = True
-        user.approval_status = 'approved'
+        user.is_approved = True  # type: ignore
+        user.approval_status = 'approved'  # type: ignore
         session.merge(user)
         session.commit()
         
@@ -296,8 +297,8 @@ def approve_account():
 @require_role(UserRole.HIGH)
 def reject_account():
     """拒絕帳號"""
-    data = request.json
-    username = data.get('username', '')
+    data = request.json  # type: ignore
+    username = data.get('username', '')  # type: ignore
     
     web_db, _ = get_databases()
     user = web_db.get_user_by_username(username)
@@ -307,7 +308,7 @@ def reject_account():
     
     session = web_db.get_session()
     try:
-        user.approval_status = 'rejected'
+        user.approval_status = 'rejected'  # type: ignore
         session.merge(user)
         session.commit()
         
@@ -321,8 +322,8 @@ def reject_account():
 @login_required
 def change_username():
     """修改用戶名"""
-    data = request.json
-    new_username = data.get('new_username', '').strip()
+    data = request.json  # type: ignore
+    new_username = data.get('new_username', '').strip()  # type: ignore
     
     if not new_username or len(new_username) < 3:
         return jsonify({'error': '用戶名至少3個字符'}), 400
@@ -415,7 +416,7 @@ def reject_application(app_id):
     if current_user.role == UserRole.LOW:
         return jsonify({'error': '權限不足'}), 403
     
-    reason = request.json.get('reason', '未提供原因')
+    reason = request.json.get('reason', '未提供原因')  # type: ignore
     _, bot_db = get_databases()
     success = bot_db.update_application_status(app_id, 'rejected', str(current_user.id), reason)
     
@@ -491,8 +492,8 @@ def bot_say():
     if current_user.role == UserRole.LOW:
         return jsonify({'error': '權限不足'}), 403
     
-    message = request.json.get('message')
-    channel_id = request.json.get('channel_id')
+    message = request.json.get('message')  # type: ignore
+    channel_id = request.json.get('channel_id')  # type: ignore
     
     if not message:
         return jsonify({'error': '消息不能為空'}), 400
@@ -503,7 +504,7 @@ def bot_say():
     # 在機器人線程中執行發送消息
     async def send_message():
         try:
-            channel = discord_bot_instance.bot.get_channel(int(channel_id))
+            channel = discord_bot_instance.bot.get_channel(int(channel_id))  # type: ignore
             if not channel:
                 return False, '找不到指定頻道'
             
@@ -514,7 +515,7 @@ def bot_say():
     
     # 使用asyncio在機器人的事件循環中執行
     try:
-        loop = discord_bot_instance.bot.loop
+        loop = discord_bot_instance.bot.loop  # type: ignore
         future = asyncio.run_coroutine_threadsafe(send_message(), loop)
         success, msg = future.result(timeout=10)
         
@@ -535,17 +536,17 @@ def settings():
 @login_required 
 def update_user_profile():
     """更新用戶資料API"""
-    data = request.json
+    data = request.json  # type: ignore
     web_db, _ = get_databases()
     session = web_db.get_session()
     
     try:
         user = session.query(WebUser).filter_by(id=current_user.id).first()
         if user:
-            if 'email' in data:
-                user.email = data['email']
-            if 'phone' in data:
-                user.phone = data['phone']
+            if 'email' in data:  # type: ignore
+                user.email = data['email']  # type: ignore
+            if 'phone' in data:  # type: ignore
+                user.phone = data['phone']  # type: ignore
             session.commit()
             return jsonify({'success': True, 'message': '資料已更新'})
         return jsonify({'error': '用戶不存在'}), 404
@@ -556,9 +557,9 @@ def update_user_profile():
 @login_required
 def change_password():
     """更改密碼API"""
-    data = request.json
-    old_password = data.get('old_password')
-    new_password = data.get('new_password')
+    data = request.json  # type: ignore
+    old_password = data.get('old_password')  # type: ignore
+    new_password = data.get('new_password')  # type: ignore
     
     if not current_user.check_password(old_password):
         return jsonify({'error': '原密碼錯誤'}), 400
@@ -575,10 +576,10 @@ def change_password():
 @require_role(UserRole.HIGH)
 def create_user():
     """創建新用戶API（隊長專用）"""
-    data = request.json
-    username = data.get('username')
-    password = data.get('password') 
-    role = UserRole(data.get('role', 'medium'))
+    data = request.json  # type: ignore
+    username = data.get('username')  # type: ignore
+    password = data.get('password')  # type: ignore
+    role = UserRole(data.get('role', 'medium'))  # type: ignore
     
     try:
         web_db, _ = get_databases()
@@ -597,9 +598,9 @@ def create_user():
 @require_role(UserRole.HIGH)
 def admin_change_password():
     """管理員更改任意用戶密碼API"""
-    data = request.json
-    user_id = data.get('user_id')
-    new_password = data.get('new_password')
+    data = request.json  # type: ignore
+    user_id = data.get('user_id')  # type: ignore
+    new_password = data.get('new_password')  # type: ignore
     
     web_db, _ = get_databases()
     success = web_db.change_user_password(user_id, new_password)
@@ -613,9 +614,9 @@ def admin_change_password():
 @require_role(UserRole.HIGH)
 def update_user_role():
     """更新用戶權限API（隊長專用）"""
-    data = request.json
-    user_id = data.get('user_id')
-    new_role = UserRole(data.get('role'))
+    data = request.json  # type: ignore
+    user_id = data.get('user_id')  # type: ignore
+    new_role = UserRole(data.get('role'))  # type: ignore
     
     web_db, _ = get_databases()
     success = web_db.update_user_role(user_id, new_role)
@@ -633,7 +634,7 @@ def unlink_discord():
     try:
         user = session.query(WebUser).filter_by(id=current_user.id).first()
         if user:
-            user.discord_id = None
+            user.discord_id = None  # type: ignore
             session.commit()
             return jsonify({'success': True, 'message': 'Discord 綁定已解除'})
         return jsonify({'error': '用戶不存在'}), 404
@@ -649,8 +650,8 @@ def link_discord():
     if current_user.role != UserRole.HIGH:
         return jsonify({'error': '僅隊長可綁定 Discord 帳號'}), 403
     
-    data = request.json
-    discord_id = data.get('discord_id')
+    data = request.json  # type: ignore
+    discord_id = data.get('discord_id')  # type: ignore
     
     if not discord_id:
         return jsonify({'error': '缺少 Discord ID'}), 400
@@ -680,8 +681,8 @@ def forgot_password_page():
 @app.route('/api/forgot-password', methods=['POST'])
 def forgot_password():
     """生成密碼重置驗證碼"""
-    data = request.json
-    username = data.get('username', '').strip()
+    data = request.json  # type: ignore
+    username = data.get('username', '').strip()  # type: ignore
     
     if not username:
         return jsonify({'error': '請輸入用戶名'}), 400
@@ -715,7 +716,7 @@ def forgot_password():
             # 使用 threading 在後台發送
             def send_dm_background():
                 try:
-                    bot_instance = discord_bot_instance.bot
+                    bot_instance = discord_bot_instance.bot  # type: ignore
                     if bot_instance and hasattr(bot_instance, 'loop'):
                         asyncio.run_coroutine_threadsafe(
                             send_forgot_password_notification(code, username),
@@ -736,10 +737,10 @@ def forgot_password():
 @app.route('/api/reset-password', methods=['POST'])
 def reset_password():
     """重置密碼"""
-    data = request.json
-    username = data.get('username', '').strip()
-    code = data.get('code', '').strip()
-    new_password = data.get('new_password', '')
+    data = request.json  # type: ignore
+    username = data.get('username', '').strip()  # type: ignore
+    code = data.get('code', '').strip()  # type: ignore
+    new_password = data.get('new_password', '')  # type: ignore
     
     if not username or not code or not new_password:
         return jsonify({'error': '缺少必要信息'}), 400
@@ -811,17 +812,17 @@ async def send_forgot_password_notification(code, username):
             return
         
         admin = admins[0]
-        if not admin.discord_id:
+        if not admin.discord_id:  # type: ignore
             print(f"✗ 隊長未綁定 Discord ID")
             print(f"\n{message}\n")
             return
         
         # 嘗試發送 Discord DM
         try:
-            admin_discord_id = int(admin.discord_id)
+            admin_discord_id = int(admin.discord_id)  # type: ignore
             # 訪問機器人實例的 bot 屬性
-            bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance
-            user = await bot.fetch_user(admin_discord_id)
+            bot = discord_bot_instance.bot if hasattr(discord_bot_instance, 'bot') else discord_bot_instance  # type: ignore
+            user = await bot.fetch_user(admin_discord_id)  # type: ignore
             await user.send(message)
             print(f"\n✓ 已發送 Discord DM 給隊長")
             print(f"  隊長 ID: {admin_discord_id}")
@@ -842,12 +843,12 @@ async def send_password_reset_confirmation(username):
         web_db, _ = get_databases()
         admins = web_db.get_admin_users()
         
-        if not admins or not admins[0].discord_id:
+        if not admins or not admins[0].discord_id:  # type: ignore
             return
         
         try:
-            admin_discord_id = int(admins[0].discord_id)
-            user = await discord_bot_instance.fetch_user(admin_discord_id)
+            admin_discord_id = int(admins[0].discord_id)  # type: ignore
+            user = await discord_bot_instance.fetch_user(admin_discord_id)  # type: ignore
         except:
             return
         
@@ -893,8 +894,8 @@ def restart_bot():
 def update_bot_activity():
     """更新機器人活動狀態"""
     try:
-        data = request.json
-        activity_text = data.get('activity', '').strip()
+        data = request.json  # type: ignore
+        activity_text = data.get('activity', '').strip()  # type: ignore
         
         if not activity_text:
             return jsonify({'error': '活動狀態不能為空'}), 400
@@ -918,17 +919,17 @@ def update_bot_activity():
 def mute_text_user():
     """禁言文字頻道成員"""
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
-        user_id = int(data.get('user_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
         
         if not channel_id or not user_id:
             return jsonify({'error': '缺少必要參數'}), 400
         
         if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             async def do_mute():
-                bot = discord_bot_instance.bot
-                channel = bot.get_channel(channel_id)
+                bot = discord_bot_instance.bot  # type: ignore
+                channel = bot.get_channel(channel_id)  # type: ignore
                 if channel:
                     member = await channel.guild.fetch_member(user_id)
                     if member:
@@ -954,17 +955,17 @@ def mute_text_user():
 def kick_text_user():
     """踢出文字頻道成員"""
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
-        user_id = int(data.get('user_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
         
         if not channel_id or not user_id:
             return jsonify({'error': '缺少必要參數'}), 400
         
         if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             async def do_kick():
-                bot = discord_bot_instance.bot
-                channel = bot.get_channel(channel_id)
+                bot = discord_bot_instance.bot  # type: ignore
+                channel = bot.get_channel(channel_id)  # type: ignore
                 if channel:
                     member = await channel.guild.fetch_member(user_id)
                     if member:
@@ -990,17 +991,17 @@ def kick_text_user():
 def mute_voice_user():
     """禁言語音頻道成員"""
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
-        user_id = int(data.get('user_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
         
         if not channel_id or not user_id:
             return jsonify({'error': '缺少必要參數'}), 400
         
         if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             async def do_voice_mute():
-                bot = discord_bot_instance.bot
-                channel = bot.get_channel(channel_id)
+                bot = discord_bot_instance.bot  # type: ignore
+                channel = bot.get_channel(channel_id)  # type: ignore
                 if channel and isinstance(channel, discord.VoiceChannel):
                     member = await channel.guild.fetch_member(user_id)
                     if member:
@@ -1026,17 +1027,17 @@ def mute_voice_user():
 def deafen_voice_user():
     """使語音用戶失聰"""
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
-        user_id = int(data.get('user_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
         
         if not channel_id or not user_id:
             return jsonify({'error': '缺少必要參數'}), 400
         
         if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             async def do_deafen():
-                bot = discord_bot_instance.bot
-                channel = bot.get_channel(channel_id)
+                bot = discord_bot_instance.bot  # type: ignore
+                channel = bot.get_channel(channel_id)  # type: ignore
                 if channel and isinstance(channel, discord.VoiceChannel):
                     member = await channel.guild.fetch_member(user_id)
                     if member:
@@ -1062,17 +1063,17 @@ def deafen_voice_user():
 def kick_voice_user():
     """踢出語音頻道成員"""
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
-        user_id = int(data.get('user_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
         
         if not channel_id or not user_id:
             return jsonify({'error': '缺少必要參數'}), 400
         
         if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
             async def do_voice_kick():
-                bot = discord_bot_instance.bot
-                channel = bot.get_channel(channel_id)
+                bot = discord_bot_instance.bot  # type: ignore
+                channel = bot.get_channel(channel_id)  # type: ignore
                 if channel and isinstance(channel, discord.VoiceChannel):
                     member = await channel.guild.fetch_member(user_id)
                     if member:
@@ -1098,8 +1099,8 @@ def kick_voice_user():
 def add_sensitive_word():
     """添加敏感詞"""
     try:
-        data = request.json
-        word = data.get('word', '').strip().lower()
+        data = request.json  # type: ignore
+        word = data.get('word', '').strip().lower()  # type: ignore
         
         if not word:
             return jsonify({'error': '敏感詞不能為空'}), 400
@@ -1115,8 +1116,8 @@ def add_sensitive_word():
 def remove_sensitive_word():
     """移除敏感詞"""
     try:
-        data = request.json
-        word = data.get('word', '').strip().lower()
+        data = request.json  # type: ignore
+        word = data.get('word', '').strip().lower()  # type: ignore
         
         SENSITIVE_WORDS.discard(word)
         return jsonify({'success': True, 'message': '已移除敏感詞'})
@@ -1219,8 +1220,8 @@ def join_voice_channel():
         return jsonify({'error': '權限不足'}), 403
     
     try:
-        data = request.json
-        channel_id = int(data.get('channel_id', 0))
+        data = request.json  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
         
         if not channel_id:
             return jsonify({'error': '缺少頻道ID'}), 400
@@ -1233,8 +1234,8 @@ def join_voice_channel():
         
         async def do_join():
             global global_voice_client
-            bot = discord_bot_instance.bot
-            channel = bot.get_channel(channel_id)
+            bot = discord_bot_instance.bot  # type: ignore
+            channel = bot.get_channel(channel_id)  # type: ignore
             
             if not channel or not isinstance(channel, discord.VoiceChannel):
                 return False, '無效的語音頻道'
@@ -1268,7 +1269,7 @@ def join_voice_channel():
         
         result, message = asyncio.run_coroutine_threadsafe(
             do_join(),
-            discord_bot_instance.bot.loop
+            discord_bot_instance.bot.loop  # type: ignore
         ).result(timeout=20)
         
         if result:
@@ -1292,7 +1293,7 @@ def leave_voice_channel():
         async def do_leave():
             try:
                 global global_voice_client
-                bot = discord_bot_instance.bot
+                bot = discord_bot_instance.bot  # type: ignore
                 disconnected = False
                 
                 # 遍歷所有伺服器並斷開連接
@@ -1319,7 +1320,7 @@ def leave_voice_channel():
         
         result, message = asyncio.run_coroutine_threadsafe(
             do_leave(),
-            discord_bot_instance.bot.loop
+            discord_bot_instance.bot.loop  # type: ignore
         ).result(timeout=10)
         
         return jsonify({'success': result, 'message': message})
@@ -1334,16 +1335,16 @@ def unmute_voice_user():
         return jsonify({'error': '權限不足'}), 403
     
     try:
-        data = request.json
-        user_id = int(data.get('user_id', 0))
-        channel_id = int(data.get('channel_id', 0))
+        data = request.json  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
         
         if not user_id or not channel_id:
             return jsonify({'error': '缺少參數'}), 400
         
         async def do_unmute():
-            bot = discord_bot_instance.bot
-            channel = bot.get_channel(channel_id)
+            bot = discord_bot_instance.bot  # type: ignore
+            channel = bot.get_channel(channel_id)  # type: ignore
             if channel and isinstance(channel, discord.VoiceChannel):
                 member = channel.guild.get_member(user_id)
                 if member and member in channel.members:
@@ -1353,7 +1354,7 @@ def unmute_voice_user():
         
         result = asyncio.run_coroutine_threadsafe(
             do_unmute(),
-            discord_bot_instance.bot.loop
+            discord_bot_instance.bot.loop  # type: ignore
         ).result(timeout=10)
         
         return jsonify({'success': result})
@@ -1368,16 +1369,16 @@ def undeafen_voice_user():
         return jsonify({'error': '權限不足'}), 403
     
     try:
-        data = request.json
-        user_id = int(data.get('user_id', 0))
-        channel_id = int(data.get('channel_id', 0))
+        data = request.json  # type: ignore
+        user_id = int(data.get('user_id', 0))  # type: ignore
+        channel_id = int(data.get('channel_id', 0))  # type: ignore
         
         if not user_id or not channel_id:
             return jsonify({'error': '缺少參數'}), 400
         
         async def do_undeafen():
-            bot = discord_bot_instance.bot
-            channel = bot.get_channel(channel_id)
+            bot = discord_bot_instance.bot  # type: ignore
+            channel = bot.get_channel(channel_id)  # type: ignore
             if channel and isinstance(channel, discord.VoiceChannel):
                 member = channel.guild.get_member(user_id)
                 if member and member in channel.members:
@@ -1387,7 +1388,7 @@ def undeafen_voice_user():
         
         result = asyncio.run_coroutine_threadsafe(
             do_undeafen(),
-            discord_bot_instance.bot.loop
+            discord_bot_instance.bot.loop  # type: ignore
         ).result(timeout=10)
         
         return jsonify({'success': result})
