@@ -182,6 +182,54 @@ class DiscordBot:
                     color=0xff0000
                 )
                 await ctx.send(embed=embed)
+        
+        @self.bot.event
+        async def on_voice_state_update(member, before, after):
+            """機器人加入語音頻道時觸發警告訊息"""
+            try:
+                # 檢查是否是機器人加入語音頻道
+                if member == self.bot.user and after.channel and not before.channel:
+                    self.logger.info(f'機器人已加入語音頻道: {after.channel.name}')
+                    
+                    # 查找相應的文字頻道並發送警告訊息
+                    voice_channel = after.channel
+                    guild = voice_channel.guild
+                    
+                    # 優先發送到 voice 頻道對應的文字頻道
+                    text_channel = None
+                    for ch in guild.text_channels:
+                        if voice_channel.name.lower() in ch.name.lower() or ch.name.lower() in voice_channel.name.lower():
+                            text_channel = ch
+                            break
+                    
+                    # 如果找不到，發送到系統頻道
+                    if not text_channel:
+                        text_channel = guild.system_channel
+                    
+                    # 如果還是找不到，發送到第一個可發送的文字頻道
+                    if not text_channel:
+                        for ch in guild.text_channels:
+                            if ch.permissions_for(guild.me).send_messages:
+                                text_channel = ch
+                                break
+                    
+                    # 發送警告訊息
+                    if text_channel and text_channel.permissions_for(guild.me).send_messages:
+                        warning_message = """⚠️ **語音頻道規則警告** ⚠️
+
+現在開始語音頻道由我管理，如有讓人有感覺到有不舒服的內容的話……
+
+1️⃣ **禁言是警告** - 1分鐘後才解除
+2️⃣ **第二次就直接踢出語音頻道**
+
+❌ **所以請不要說出讓人不舒服的內容，謝謝配合！**"""
+                        try:
+                            await text_channel.send(warning_message)
+                            self.logger.info(f'已在 {text_channel.name} 發送語音頻道警告訊息')
+                        except Exception as msg_err:
+                            self.logger.warning(f'發送警告訊息失敗: {str(msg_err)}')
+            except Exception as e:
+                self.logger.warning(f'語音狀態更新事件出錯: {str(e)}')
     
     async def start_bot(self):
         """啟動機器人"""
