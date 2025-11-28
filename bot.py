@@ -195,16 +195,15 @@ class DiscordBot:
                     voice_channel = after.channel
                     guild = voice_channel.guild
                     
-                    # 優先發送到 voice 頻道對應的文字頻道
-                    text_channel = None
-                    for ch in guild.text_channels:
-                        if voice_channel.name.lower() in ch.name.lower() or ch.name.lower() in voice_channel.name.lower():
-                            text_channel = ch
-                            break
+                    # **優先發送到系統頻道**（隊長最容易看到）
+                    text_channel = guild.system_channel
                     
-                    # 如果找不到，發送到系統頻道
+                    # 如果系統頻道不存在，查找對應的文字頻道
                     if not text_channel:
-                        text_channel = guild.system_channel
+                        for ch in guild.text_channels:
+                            if voice_channel.name.lower() in ch.name.lower() or ch.name.lower() in voice_channel.name.lower():
+                                text_channel = ch
+                                break
                     
                     # 如果還是找不到，發送到第一個可發送的文字頻道
                     if not text_channel:
