@@ -29,14 +29,18 @@ args = "ɢʀᴠ戰隊系統"
 name = "ɢʀᴠ戰隊系統"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python integrated_launcher.py"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 8080
-externalPort = 8080
+localPort = 37007
+externalPort = 3000
