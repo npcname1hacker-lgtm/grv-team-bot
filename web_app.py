@@ -344,8 +344,12 @@ def change_username():
         user.username = new_username
         session.commit()
         
-        return jsonify({'success': True, 'message': '用戶名已更改'})
+        # 更新當前用戶物件以保持會話一致性
+        current_user.username = new_username
+        
+        return jsonify({'success': True, 'message': '用戶名已更改', 'new_username': new_username})
     except Exception as e:
+        session.rollback()
         return jsonify({'error': str(e)}), 400
     finally:
         session.close()
