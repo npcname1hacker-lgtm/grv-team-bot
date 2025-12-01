@@ -320,15 +320,23 @@
 - ❌ 會自動斷線（需要升級到付費方案才能 24/7 運行）
 - 🌐 訪問：http://0.0.0.0:5000
 
-### 選項 2：Wispbyte Free Tier（推薦永不斷線 ⭐）
+### 選項 2：Bot-Hosting.net（推薦永不斷線 ⭐）
 - ✅ 24/7 永不斷線
 - ✅ 完全免費（無需信用卡）
 - ✅ 無需更新/續期
 - ✅ 國小生也能用
-- 📖 部署指南：見 `WISPBYTE_DEPLOYMENT.md`
-- 🌐 自動獲得公開 URL
+- ✅ 自動重啟和監控
+- 📖 部署指南：見 `BOT_HOSTING_NET_DEPLOYMENT.md`
+- ⚠️ 限制：僅支持 Discord 機器人，不支持 Flask 網站
 
-### 選項 3：Oracle Cloud Free Tier（進階用戶）
+### 選項 3：Wispbyte Free Tier（備選）
+- ✅ 24/7 永不斷線
+- ✅ 完全免費（無需信用卡）
+- ✅ 支持完整系統（機器人 + 網站）
+- ❌ GitHub 連接有時不穩定
+- 📖 部署指南：見 `WISPBYTE_DEPLOYMENT.md`
+
+### 選項 4：Oracle Cloud Free Tier（進階用戶）
 - ✅ 24/7 永久免費
 - ✅ 高效能（4 核心、24GB 記憶體）
 - ❌ 需要技術知識
@@ -339,6 +347,6 @@
 - ❌ Discord 語音連接 - Replit 環境對 UDP 有限制，無法建立語音通道
   - 握手成功但音頻通道無法連接
   - 文字轉語音功能需要外部服務支持
-  - **建議**: 使用 Wispbyte 或 Oracle Cloud 可解決此問題
+  - **建議**: 使用 Bot-Hosting.net、Wispbyte 或 Oracle Cloud 可解決此問題
 
-💰 最推薦：**Wispbyte** = 最簡單 + 永遠免費！
+💰 最推薦：**Bot-Hosting.net** = 永不斷線 + 最簡單 + 永遠免費！
