@@ -161,8 +161,26 @@ function scanMembers() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(`成功掃描 ${data.count || 0} 個成員！`);
-            loadMembersList();
+            const tbody = document.querySelector('#membersTable tbody');
+            const select = document.getElementById('memberSelect');
+            tbody.innerHTML = '';
+            select.innerHTML = '<option value="">-- 選擇成員 --</option>';
+            
+            if (data.members && data.members.length > 0) {
+                data.members.forEach(member => {
+                    const row = tbody.insertRow();
+                    const joinDate = new Date(member.joined_at).toLocaleDateString('zh-TW');
+                    row.innerHTML = `<td>${member.name}</td><td>${joinDate}</td><td>${member.roles.join(', ') || '無'}</td><td><button class="btn btn-sm btn-info">詳情</button></td>`;
+                    
+                    const option = document.createElement('option');
+                    option.value = member.id;
+                    option.textContent = member.name;
+                    select.appendChild(option);
+                });
+                alert(`成功掃描 ${data.count || 0} 個成員！`);
+            } else {
+                alert('找不到成員（可能只有機器人）');
+            }
         } else {
             alert('掃描失敗：' + (data.error || '未知錯誤'));
         }

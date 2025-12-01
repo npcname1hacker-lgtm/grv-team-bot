@@ -625,17 +625,32 @@ def scan_members():
         if not channel:
             return jsonify({'error': '頻道未找到'}), 404
         
-        # 同步方式計數成員（語音/文字頻道）
-        count = 0
+        # 獲取該頻道的成員列表
+        members = []
         try:
-            if hasattr(channel, 'members'):  # 語音頻道
-                count = len(channel.members)
-            elif hasattr(channel, 'guild'):  # 文字頻道
-                count = len(list(channel.guild.members))
-        except:
-            count = 0
+            # 語音頻道有 members 屬性
+            if hasattr(channel, 'members'):
+                member_list = channel.members
+            # 文字/論壇頻道通過 guild.members 獲取
+            elif hasattr(channel, 'guild'):
+                member_list = channel.guild.members
+            else:
+                member_list = []
+            
+            # 轉換成員列表
+            for member in member_list:
+                if member.bot:
+                    continue  # 跳過機器人
+                members.append({
+                    'id': str(member.id),
+                    'name': member.display_name,
+                    'joined_at': member.joined_at.isoformat() if member.joined_at else '',
+                    'roles': [role.name for role in member.roles if role.name != '@everyone']
+                })
+        except Exception as e:
+            print(f"掃描成員出錯: {e}")
         
-        return jsonify({'success': True, 'count': count})
+        return jsonify({'success': True, 'count': len(members), 'members': members})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
