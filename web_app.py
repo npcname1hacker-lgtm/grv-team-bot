@@ -609,36 +609,23 @@ def set_announcement_channel():
     """設置公告頻道"""
     return jsonify({'success': True, 'message': '公告頻道已設置'})
 
-@app.route('/api/channels/scan-members', methods=['POST'])
+@app.route('/api/server/scan-members', methods=['POST'])
 @login_required
 @require_role(UserRole.HIGH)
-def scan_members():
-    """掃描頻道成員"""
-    data = request.json  # type: ignore
-    channel_id = data.get('channel_id')  # type: ignore
-    
+def scan_server_members():
+    """掃描 Discord 伺服器所有成員"""
     try:
         if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
             return jsonify({'error': '機器人未連接'}), 503
         
-        channel = discord_bot_instance.bot.get_channel(int(channel_id))  # type: ignore
-        if not channel:
-            return jsonify({'error': '頻道未找到'}), 404
+        guild = discord_bot_instance.bot.guilds[0] if discord_bot_instance.bot.guilds else None
+        if not guild:
+            return jsonify({'error': '伺服器未找到'}), 404
         
-        # 獲取該頻道的成員列表
+        # 獲取伺服器的所有成員
         members = []
         try:
-            # 語音頻道有 members 屬性
-            if hasattr(channel, 'members'):
-                member_list = channel.members
-            # 文字/論壇頻道通過 guild.members 獲取
-            elif hasattr(channel, 'guild'):
-                member_list = channel.guild.members
-            else:
-                member_list = []
-            
-            # 轉換成員列表
-            for member in member_list:
+            for member in guild.members:
                 if member.bot:
                     continue  # 跳過機器人
                 members.append({

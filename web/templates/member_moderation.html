@@ -30,17 +30,10 @@
                 <h5>自動掃描成員</h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <label for="scanChannel" class="form-label">選擇頻道</label>
-                        <select class="form-control" id="scanChannel"></select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-info w-100" onclick="scanMembers()">
-                            <i class="fas fa-search"></i> 掃描成員
-                        </button>
-                    </div>
-                </div>
+                <button class="btn btn-info w-100" onclick="scanMembers()">
+                    <i class="fas fa-search"></i> 掃描 Discord 伺服器所有成員
+                </button>
+                <small class="text-muted d-block mt-2">點擊按鈕掃描整個伺服器的所有成員（不包括機器人）</small>
             </div>
         </div>
         <div class="card">
@@ -104,21 +97,6 @@
 </div>
 
 <script>
-// 載入頻道列表用於掃描
-fetch('/api/bot/channels')
-    .then(res => res.json())
-    .then(data => {
-        const select = document.getElementById('scanChannel');
-        if (data.channels) {
-            data.channels.forEach(ch => {
-                const option = document.createElement('option');
-                option.value = ch.id;
-                option.textContent = ch.name;
-                select.appendChild(option);
-            });
-        }
-    });
-
 // 載入初始成員列表
 loadMembersList();
 
@@ -147,16 +125,10 @@ function loadMembersList() {
 }
 
 function scanMembers() {
-    const channelId = document.getElementById('scanChannel').value;
-    if (!channelId) {
-        alert('請選擇頻道');
-        return;
-    }
-    
-    fetch('/api/channels/scan-members', {
+    fetch('/api/server/scan-members', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({channel_id: channelId})
+        body: JSON.stringify({})
     })
     .then(res => res.json())
     .then(data => {
@@ -179,7 +151,7 @@ function scanMembers() {
                 });
                 alert(`成功掃描 ${data.count || 0} 個成員！`);
             } else {
-                alert('找不到成員（可能只有機器人）');
+                alert('找不到成員');
             }
         } else {
             alert('掃描失敗：' + (data.error || '未知錯誤'));
