@@ -19,12 +19,12 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary" onclick="alert('機器人說話功能')">
+                    <a href="{{ url_for('bot_message') }}" class="btn btn-outline-primary">
                         <i class="fas fa-microphone"></i> 機器人說話
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="alert('機器人狀態檢查')">
+                    </a>
+                    <a href="{{ url_for('bot_status') }}" class="btn btn-outline-primary">
                         <i class="fas fa-heartbeat"></i> 機器人狀態
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -38,15 +38,15 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-success" onclick="alert('語音頻道管理')">
+                    <a href="{{ url_for('channels') }}" class="btn btn-outline-success">
                         <i class="fas fa-microphone-alt"></i> 語音頻道
-                    </button>
-                    <button class="btn btn-outline-success" onclick="alert('文字頻道管理')">
+                    </a>
+                    <a href="{{ url_for('channels') }}" class="btn btn-outline-success">
                         <i class="fas fa-comments"></i> 文字頻道
-                    </button>
-                    <button class="btn btn-outline-success" onclick="alert('公告頻道')">
+                    </a>
+                    <a href="{{ url_for('channels') }}" class="btn btn-outline-success">
                         <i class="fas fa-megaphone"></i> 公告頻道
-                    </button>
+                    </a>
                     <a href="{{ url_for('applications') }}" class="btn btn-outline-success">
                         <i class="fas fa-clipboard-list"></i> 申請管理
                     </a>
@@ -73,10 +73,10 @@
                     <button class="btn btn-outline-warning" onclick="showAddUserModal()">
                         <i class="fas fa-user-plus"></i> 新增賬號
                     </button>
-                    <button class="btn btn-outline-warning" onclick="alert('成員處理')">
+                    <a href="{{ url_for('member_moderation') }}" class="btn btn-outline-warning">
                         <i class="fas fa-gavel"></i> 成員處理
-                    </button>
-                    <button class="btn btn-outline-warning" onclick="alert('系統設置')">
+                    </a>
+                    <button class="btn btn-outline-warning" onclick="alert('系統設置功能即將推出')">
                         <i class="fas fa-sliders-h"></i> 系統設置
                     </button>
                 </div>

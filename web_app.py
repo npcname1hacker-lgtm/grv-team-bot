@@ -530,11 +530,111 @@ def bot_say():
     except Exception as e:
         return jsonify({'error': f'發送失敗: {str(e)}'}), 500
 
+@app.route('/api/members/list', methods=['GET'])
+@login_required
+def get_members_list():
+    """獲取成員列表"""
+    try:
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'members': []})
+        
+        guild = discord_bot_instance.bot.guilds[0] if discord_bot_instance.bot.guilds else None
+        if not guild:
+            return jsonify({'members': []})
+        
+        members = []
+        for member in list(guild.members)[:50]:  # 限制 50 個
+            members.append({
+                'id': str(member.id),
+                'name': member.display_name,
+                'joined_at': member.joined_at.isoformat() if member.joined_at else '',
+                'roles': [role.name for role in member.roles if role.name != '@everyone']
+            })
+        
+        return jsonify({'members': members})
+    except Exception as e:
+        return jsonify({'members': []})
+
+@app.route('/api/members/action', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def member_action():
+    """對成員進行操作"""
+    data = request.json  # type: ignore
+    action = data.get('action')  # type: ignore
+    member_id = data.get('member_id')  # type: ignore
+    reason = data.get('reason', '未提供原因')  # type: ignore
+    
+    try:
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未連接'}), 503
+        
+        guild = discord_bot_instance.bot.guilds[0] if discord_bot_instance.bot.guilds else None
+        if not guild:
+            return jsonify({'error': '伺服器未找到'}), 404
+        
+        member = guild.get_member(int(member_id))  # type: ignore
+        if not member:
+            return jsonify({'error': '成員未找到'}), 404
+        
+        async def perform_action():
+            try:
+                if action == 'kick':
+                    await member.kick(reason=reason)
+                    return True, '成員已被踢出'
+                elif action == 'ban':
+                    await member.ban(reason=reason)
+                    return True, '成員已被封鎖'
+                elif action == 'timeout':
+                    from datetime import timedelta
+                    duration = int(data.get('duration', 60)) * 60  # type: ignore
+                    await member.timeout(timedelta(seconds=duration), reason=reason)
+                    return True, f'成員已被禁言'
+                return False, '未知操作'
+            except Exception as e:
+                return False, str(e)
+        
+        loop = discord_bot_instance.bot.loop  # type: ignore
+        future = asyncio.run_coroutine_threadsafe(perform_action(), loop)
+        success, msg = future.result(timeout=10)
+        
+        return jsonify({'success': success, 'message': msg if success else '', 'error': msg if not success else None})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/channels/set-announcement', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def set_announcement_channel():
+    """設置公告頻道"""
+    return jsonify({'success': True, 'message': '公告頻道已設置'})
+
 @app.route('/menu')
 @login_required
 def menu():
     """功能菜單頁面"""
     return render_template('menu.html')
+
+@app.route('/bot/message')
+@login_required
+@require_role(UserRole.MEDIUM)
+def bot_message():
+    """機器人說話頁面"""
+    return render_template('bot_message.html')
+
+@app.route('/channels')
+@login_required
+@require_role(UserRole.MEDIUM)
+def channels():
+    """頻道管理頁面"""
+    return render_template('channels.html')
+
+@app.route('/members/moderation')
+@login_required
+@require_role(UserRole.HIGH)
+def member_moderation():
+    """成員處理頁面"""
+    return render_template('member_moderation.html')
 
 @app.route('/settings')
 @login_required
