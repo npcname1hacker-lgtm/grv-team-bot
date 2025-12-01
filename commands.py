@@ -532,17 +532,20 @@ def setup_commands(bot):
             vc = ctx.voice_client
             
             # 如果機器人還未連接，連接到語音頻道
-            if vc is None or not vc.is_connected():
-                vc = await voice_channel.connect()
-                await asyncio.sleep(1)  # 等待連接建立
+            if vc is None:
+                try:
+                    vc = await voice_channel.connect()
+                    await asyncio.sleep(1)  # 等待連接建立
+                except discord.ClientException:
+                    # 已經連接，獲取當前連接
+                    vc = ctx.voice_client
             # 如果機器人在不同頻道，移動過去
             elif vc.channel != voice_channel:
-                await vc.move_to(voice_channel)
-                await asyncio.sleep(1)
-            
-            # 確保已連接
-            if not vc.is_connected():
-                raise Exception("連接語音頻道失敗")
+                try:
+                    await vc.move_to(voice_channel)
+                    await asyncio.sleep(1)
+                except discord.ClientException:
+                    pass
             
             # 播放音頻
             source = discord.FFmpegPCMAudio(audio_file)
