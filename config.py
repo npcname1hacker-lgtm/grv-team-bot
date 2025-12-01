@@ -19,6 +19,9 @@ class Config:
         self.COMMAND_PREFIX = os.getenv('COMMAND_PREFIX', '!')
         self.BOT_STATUS = os.getenv('BOT_STATUS', '使用 !help 獲取幫助')
         
+        # 公告頻道設置
+        self.ANNOUNCEMENT_CHANNEL_ID = 1410846655980503040  # ɢʀᴠ戰隊群公告頻道（永久預設）
+        
         # 日誌設置
         self.LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
         self.DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
