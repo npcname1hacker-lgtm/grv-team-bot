@@ -246,40 +246,51 @@ def setup_commands(bot):
                 )
                 await ctx.send(embed=embed)
         else:
-            # 顯示所有指令
-            embed = discord.Embed(
-                title="📚 指令列表",
-                description="以下是所有可用的指令：",
+            # 顯示所有指令 - 三個獨立菜單
+            
+            # ═══════════════════════════════════
+            # 菜單 1: 基本指令與資訊
+            # ═══════════════════════════════════
+            embed1 = discord.Embed(
+                title="📚 基本指令與資訊",
+                description="系統與伺服器資訊查詢",
                 color=0x0099ff
             )
-            
-            # 基本指令
             basic_commands = [
                 "`!hello` - 打招呼",
-                "`!ping` - 檢查延遲",
-                "`!info` - 機器人資訊",
-                "`!help [指令]` - 顯示幫助"
+                "`!ping` - 檢查連接延遲",
+                "`!info` - 查看機器人資訊",
+                "`!serverinfo` - 查看伺服器資訊",
+                "`!userinfo [用戶]` - 查看用戶資訊"
             ]
-            embed.add_field(name="🎯 基本指令", value="\n".join(basic_commands), inline=False)
+            embed1.add_field(name="📖 指令列表", value="\n".join(basic_commands), inline=False)
+            embed1.set_footer(text="菜單 1 / 3 | 使用 !help <指令名稱> 獲取詳細資訊")
             
-            # 資訊指令
-            info_commands = [
-                "`!serverinfo` - 伺服器資訊",
-                "`!userinfo [用戶]` - 用戶資訊"
-            ]
-            embed.add_field(name="ℹ️ 資訊指令", value="\n".join(info_commands), inline=False)
-            
-            # 實用指令
+            # ═══════════════════════════════════
+            # 菜單 2: 通用工具
+            # ═══════════════════════════════════
+            embed2 = discord.Embed(
+                title="🔧 通用工具",
+                description="文字和訊息管理工具",
+                color=0x00cc00
+            )
             utility_commands = [
-                "`!say <訊息>` - 讓機器人說話",
-                "`!clear [數量]` - 清除訊息 (需要權限)",
-                "`!tts <文字>` - 文字轉語音（須在語音頻道）"
+                "`!say <訊息>` - 讓機器人轉發訊息",
+                "`!clear [數量]` - 批量清除訊息 (需要權限)"
             ]
-            embed.add_field(name="🔧 實用指令", value="\n".join(utility_commands), inline=False)
+            embed2.add_field(name="📖 指令列表", value="\n".join(utility_commands), inline=False)
+            embed2.set_footer(text="菜單 2 / 3 | 使用 !help <指令名稱> 獲取詳細資訊")
             
-            # 戰隊管理指令
+            # ═══════════════════════════════════
+            # 菜單 3: 隊長管理工具
+            # ═══════════════════════════════════
+            embed3 = discord.Embed(
+                title="⚔️ 隊長管理工具",
+                description="成員管理與申請審核",
+                color=0xff6600
+            )
             admin_commands = [
-                "`!申請` - 查看待審核申請 (管理員)",
+                "`!申請` - 查看待審核申請",
                 "`!檢查成員` - 檢查未申請的成員",
                 "`!要求申請 @成員` - 要求成員補交申請",
                 "`!kick <成員> [原因]` - 踢出成員",
@@ -287,11 +298,12 @@ def setup_commands(bot):
                 "`!timeout <成員> [分鐘] [原因]` - 禁言成員",
                 "`!untimeout <成員>` - 解除禁言"
             ]
-            embed.add_field(name="⚔️ 戰隊管理", value="\n".join(admin_commands), inline=False)
+            embed3.add_field(name="📖 指令列表", value="\n".join(admin_commands), inline=False)
+            embed3.set_footer(text="菜單 3 / 3 | 使用 !help <指令名稱> 獲取詳細資訊")
             
-            embed.set_footer(text="使用 !help <指令名稱> 獲取特定指令的詳細資訊")
-            
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed1)
+            await ctx.send(embed=embed2)
+            await ctx.send(embed=embed3)
     
     @bot.command(name='申請', aliases=['applications'])
     @commands.has_permissions(manage_guild=True)
@@ -483,108 +495,6 @@ def setup_commands(bot):
             embed = discord.Embed(
                 title="❌ 權限不足",
                 description="機器人沒有禁言成員的權限",
-                color=0xff0000
-            )
-            await ctx.send(embed=embed)
-    
-    @bot.command(name='tts', aliases=['說話', '文字轉語音'])
-    async def tts_command(ctx, *, text):
-        """文字轉語音 - 機器人在語音頻道中說話"""
-        # 檢查使用者是否在語音頻道
-        if not ctx.author.voice or not ctx.author.voice.channel:
-            embed = discord.Embed(
-                title="❌ 您未在語音頻道中",
-                description="請先加入語音頻道再使用此指令",
-                color=0xff0000
-            )
-            await ctx.send(embed=embed)
-            return
-        
-        # 檢查訊息長度
-        if len(text) > 100:
-            embed = discord.Embed(
-                title="❌ 文字太長",
-                description="文字不能超過100個字符",
-                color=0xff0000
-            )
-            await ctx.send(embed=embed)
-            return
-        
-        try:
-            import subprocess
-            import os
-            import asyncio
-            
-            voice_channel = ctx.author.voice.channel
-            vc = ctx.voice_client
-            
-            # 確保已連接到語音頻道
-            if vc is None:
-                vc = await voice_channel.connect()
-                await asyncio.sleep(1)
-            elif vc.channel != voice_channel:
-                await vc.move_to(voice_channel)
-                await asyncio.sleep(1)
-            elif not vc.is_connected():
-                vc = await voice_channel.connect()
-                await asyncio.sleep(1)
-            
-            # 檢查連接狀態
-            if not vc or not vc.is_connected():
-                raise Exception("無法連接到語音頻道")
-            
-            # 生成音頻文件路徑
-            audio_file = f"/tmp/tts_{ctx.author.id}_{int(asyncio.get_event_loop().time())}.mp3"
-            
-            # 使用 espeak 生成語音並轉換為 MP3
-            try:
-                # 先生成 WAV
-                wav_file = audio_file.replace('.mp3', '.wav')
-                subprocess.run(['espeak', '-w', wav_file, text], timeout=5, check=True, capture_output=True)
-                
-                # 轉換為 MP3（更相容）
-                subprocess.run(['ffmpeg', '-y', '-i', wav_file, '-q:a', '9', audio_file], 
-                             timeout=10, check=True, capture_output=True)
-                
-                # 清理 WAV
-                try:
-                    os.remove(wav_file)
-                except:
-                    pass
-            except Exception as e:
-                raise Exception(f"音頻生成失敗: {str(e)}")
-            
-            # 檢查文件是否生成
-            if not os.path.exists(audio_file) or os.path.getsize(audio_file) == 0:
-                raise Exception("音頻文件生成失敗")
-            
-            # 停止正在播放的音頻
-            if vc.is_playing():
-                vc.stop()
-                await asyncio.sleep(0.5)
-            
-            # 播放音頻
-            source = discord.FFmpegPCMAudio(audio_file)
-            vc.play(source, after=lambda e: None if e is None else print(f"播放錯誤: {e}"))
-            
-            embed = discord.Embed(
-                title="🎙️ 正在播放文字轉語音",
-                description=f"**內容:** {text}",
-                color=0x00ff00
-            )
-            await ctx.send(embed=embed)
-            
-            # 等待播放完成後清理
-            await asyncio.sleep(12)
-            try:
-                os.remove(audio_file)
-            except:
-                pass
-        
-        except Exception as e:
-            embed = discord.Embed(
-                title="❌ 文字轉語音失敗",
-                description=f"錯誤: {str(e)}",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
