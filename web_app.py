@@ -16,7 +16,7 @@ import json
 from datetime import datetime, timedelta
 import random
 import string
-from web_models import WebUser, UserRole, BotCommand, get_web_database, PasswordReset
+from web_models import WebUser, UserRole, BotCommand, get_web_database, PasswordReset, WelcomeSettings
 from models import get_bot_database
 from email_service import get_email_service
 
@@ -428,6 +428,63 @@ def reject_application(app_id):
         return jsonify({'success': True, 'message': '申請已拒絕'})
     else:
         return jsonify({'error': '操作失敗'}), 400
+
+@app.route('/welcome')
+@login_required
+@require_role(UserRole.HIGH)
+def welcome_settings():
+    """歡迎設置頁面（隊長專用）"""
+    if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+        flash('機器人未連接', 'error')
+        return redirect(url_for('dashboard'))
+    
+    web_db, _ = get_databases()
+    session = web_db.get_session()
+    guild_id = str(discord_bot_instance.bot.guilds[0].id) if discord_bot_instance.bot.guilds else None
+    settings = session.query(WelcomeSettings).filter_by(guild_id=guild_id).first() if guild_id else None
+    session.close()
+    
+    return render_template('welcome_settings.html', settings=settings, guild_id=guild_id)
+
+@app.route('/api/welcome/save', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def save_welcome_settings():
+    """保存歡迎設置API"""
+    try:
+        data = request.json
+        guild_id = str(data.get('guild_id', ''))
+        channel_id = str(data.get('channel_id', ''))
+        message_template = data.get('message_template', '歡迎 {username} 加入 {servername}！')
+        auto_rename_enabled = data.get('auto_rename_enabled', True)
+        rename_prefix = data.get('rename_prefix', 'ɢʀᴠ.')
+        is_enabled = data.get('is_enabled', True)
+        
+        if not guild_id or not channel_id:
+            return jsonify({'error': '缺少必要參數'}), 400
+        
+        web_db, _ = get_databases()
+        session = web_db.get_session()
+        
+        settings = session.query(WelcomeSettings).filter_by(guild_id=guild_id).first()
+        if not settings:
+            settings = WelcomeSettings(guild_id=guild_id)
+        
+        settings.channel_id = channel_id
+        settings.message_template = message_template
+        settings.auto_rename_enabled = auto_rename_enabled
+        settings.rename_prefix = rename_prefix
+        settings.is_enabled = is_enabled
+        settings.updated_by = current_user.username
+        settings.updated_at = datetime.utcnow()
+        
+        session.add(settings)
+        session.commit()
+        session.close()
+        
+        return jsonify({'success': True, 'message': '歡迎設置已保存'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/users')
 @login_required

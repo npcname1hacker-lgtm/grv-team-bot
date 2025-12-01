@@ -101,6 +101,21 @@ class VoiceState(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class WelcomeSettings(Base):
+    """歡迎設置"""
+    __tablename__ = 'welcome_settings'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    guild_id = Column(String(50), nullable=False, unique=True)
+    channel_id = Column(String(50), nullable=False)
+    message_template = Column(Text, default="歡迎 {username} 加入 {servername}！")
+    auto_rename_enabled = Column(Boolean, default=True)
+    rename_prefix = Column(String(50), default="ɢʀᴠ.")
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_by = Column(String(50))
+
 # 全局資料庫管理器實例
 _web_db_instance = None
 

@@ -11,6 +11,7 @@ import lavalink
 from config import Config
 from commands import setup_commands
 from application_system import setup_application_system
+from web_models import WelcomeSettings
 
 class DiscordBot:
     def __init__(self):
@@ -103,6 +104,52 @@ class DiscordBot:
         async def on_guild_remove(guild):
             """機器人離開伺服器時觸發"""
             self.logger.info(f'機器人已離開伺服器: {guild.name} (ID: {guild.id})')
+        
+        @self.bot.event
+        async def on_member_join(member):
+            """新成員加入伺服器時觸發"""
+            try:
+                from web_models import get_web_database
+                web_db = get_web_database()
+                
+                # 獲取該伺服器的歡迎設置
+                session = web_db.get_session()
+                welcome_settings = session.query(WelcomeSettings).filter_by(
+                    guild_id=str(member.guild.id),
+                    is_enabled=True
+                ).first()
+                session.close()
+                
+                if not welcome_settings:
+                    return
+                
+                # 1. 自動改名
+                if welcome_settings.auto_rename_enabled:
+                    try:
+                        new_name = f"{welcome_settings.rename_prefix}{member.name}"
+                        await member.edit(nick=new_name)
+                        self.logger.info(f"已將成員 {member.name} 改名為 {new_name}")
+                    except discord.Forbidden:
+                        self.logger.warning(f"無法改名成員 {member.name}，權限不足")
+                    except Exception as e:
+                        self.logger.warning(f"改名失敗: {e}")
+                
+                # 2. 發送歡迎訊息
+                try:
+                    channel = self.bot.get_channel(int(welcome_settings.channel_id))
+                    if channel:
+                        # 替換參數
+                        message = welcome_settings.message_template.format(
+                            username=member.name,
+                            servername=member.guild.name
+                        )
+                        await channel.send(message)
+                        self.logger.info(f"已發送歡迎訊息給 {member.name}")
+                except Exception as e:
+                    self.logger.warning(f"發送歡迎訊息失敗: {e}")
+            
+            except Exception as e:
+                self.logger.error(f"成員加入事件處理失敗: {e}")
         
         @self.bot.event
         async def on_message(message):
