@@ -49,107 +49,96 @@
     </div>
 </div>
 
-<!-- 菜單 1: 機器人功能 -->
+<!-- 三個橫選單並排在一行 -->
 <div class="row mb-4">
-    <div class="col">
-        <div class="card border-primary">
+    <!-- 菜單 1: 機器人功能 -->
+    <div class="col-md-4">
+        <div class="card border-primary h-100">
             <div class="card-header bg-primary text-white">
                 <h5><i class="fas fa-robot"></i> 機器人功能</h5>
             </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <button class="btn btn-outline-primary w-100 py-3" onclick="alert('機器人說話功能')">
-                            <i class="fas fa-microphone"></i><br><small>機器人說話</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <button class="btn btn-outline-primary w-100 py-3" onclick="alert('機器人狀態檢查')">
-                            <i class="fas fa-heartbeat"></i><br><small>機器人狀態</small>
-                        </button>
-                    </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="alert('機器人說話功能')">
+                        <i class="fas fa-microphone"></i> 機器人說話
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="alert('機器人狀態檢查')">
+                        <i class="fas fa-heartbeat"></i> 機器人狀態
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 菜單 2: 頻道與申請 -->
-<div class="row mb-4">
-    <div class="col">
-        <div class="card border-success">
+    <!-- 菜單 2: 頻道與申請 -->
+    <div class="col-md-4">
+        <div class="card border-success h-100">
             <div class="card-header bg-success text-white">
-                <h5><i class="fas fa-comments"></i> 頻道與申請管理</h5>
+                <h5><i class="fas fa-comments"></i> 頻道與申請</h5>
             </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-success w-100 py-3" onclick="alert('語音頻道管理')">
-                            <i class="fas fa-microphone-alt"></i><br><small>語音頻道</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-success w-100 py-3" onclick="alert('文字頻道管理')">
-                            <i class="fas fa-comments"></i><br><small>文字頻道</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-success w-100 py-3" onclick="alert('公告頻道')">
-                            <i class="fas fa-megaphone"></i><br><small>公告頻道</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <a href="{{ url_for('applications') }}" class="btn btn-outline-success w-100 py-3">
-                            <i class="fas fa-clipboard-list"></i><br><small>申請管理</small>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <a href="{{ url_for('settings') }}" class="btn btn-outline-success w-100 py-3">
-                            <i class="fas fa-cog"></i><br><small>個人設置</small>
-                        </a>
-                    </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success" onclick="alert('語音頻道管理')">
+                        <i class="fas fa-microphone-alt"></i> 語音頻道
+                    </button>
+                    <button class="btn btn-outline-success" onclick="alert('文字頻道管理')">
+                        <i class="fas fa-comments"></i> 文字頻道
+                    </button>
+                    <button class="btn btn-outline-success" onclick="alert('公告頻道')">
+                        <i class="fas fa-megaphone"></i> 公告頻道
+                    </button>
+                    <a href="{{ url_for('applications') }}" class="btn btn-outline-success">
+                        <i class="fas fa-clipboard-list"></i> 申請管理
+                    </a>
+                    <a href="{{ url_for('settings') }}" class="btn btn-outline-success">
+                        <i class="fas fa-cog"></i> 個人設置
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 菜單 3: 隊長管理工具 -->
-{% if current_user.role.name == 'HIGH' %}
-<div class="row mb-4">
-    <div class="col">
-        <div class="card border-warning">
+    <!-- 菜單 3: 隊長工具 -->
+    {% if current_user.role.name == 'HIGH' %}
+    <div class="col-md-4">
+        <div class="card border-warning h-100">
             <div class="card-header bg-warning text-dark">
                 <h5><i class="fas fa-crown"></i> 隊長管理工具</h5>
             </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <a href="{{ url_for('users') }}" class="btn btn-outline-warning w-100 py-3">
-                            <i class="fas fa-users-cog"></i><br><small>用戶管理</small>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-warning w-100 py-3" onclick="showAddUserModal()">
-                            <i class="fas fa-user-plus"></i><br><small>新增賬號</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-warning w-100 py-3" onclick="alert('成員處理')">
-                            <i class="fas fa-gavel"></i><br><small>成員處理</small>
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-warning w-100 py-3" onclick="alert('系統設置')">
-                            <i class="fas fa-sliders-h"></i><br><small>系統設置</small>
-                        </button>
-                    </div>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('users') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-users-cog"></i> 用戶管理
+                    </a>
+                    <button class="btn btn-outline-warning" onclick="showAddUserModal()">
+                        <i class="fas fa-user-plus"></i> 新增賬號
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="alert('成員處理')">
+                        <i class="fas fa-gavel"></i> 成員處理
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="alert('系統設置')">
+                        <i class="fas fa-sliders-h"></i> 系統設置
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="col-md-4">
+        <div class="card border-secondary h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-lock"></i> 隊長工具</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted text-center">
+                    <i class="fas fa-lock"></i><br>
+                    隊長專用功能
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- 新增用戶模態（隊長專用） -->
 {% if current_user.role.name == 'HIGH' %}
