@@ -32,9 +32,6 @@
             <a href="{{ url_for('applications') }}" class="nav-link">
                 <i class="fas fa-file-alt"></i> 申請管理
             </a>
-            <a href="{{ url_for('bot_control') }}" class="nav-link">
-                <i class="fas fa-robot"></i> 機器人控制
-            </a>
             {% endif %}
             
             {% if current_user.role.name == 'HIGH' %}
