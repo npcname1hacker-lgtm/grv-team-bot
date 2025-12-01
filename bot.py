@@ -45,8 +45,7 @@ class DiscordBot:
         # 設置申請系統
         setup_application_system(self.bot)
         
-        # 嘗試初始化 Lavalink
-        self.setup_lavalink()
+        # Lavalink 會在 on_ready 時初始化
     
     async def setup_lavalink(self):
         """初始化 Wavelink (Lavalink) 連接"""
