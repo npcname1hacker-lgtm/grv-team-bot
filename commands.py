@@ -515,41 +515,57 @@ def setup_commands(bot):
             import os
             import asyncio
             
-            # 生成音頻文件路徑
-            audio_file = f"/tmp/tts_{ctx.author.id}.wav"
+            voice_channel = ctx.author.voice.channel
+            vc = ctx.voice_client
             
-            # 使用 espeak 生成語音（Linux 系統工具）
-            cmd = ['espeak', '-w', audio_file, text]
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            process.wait(timeout=10)
+            # 確保已連接到語音頻道
+            if vc is None:
+                vc = await voice_channel.connect()
+                await asyncio.sleep(1)
+            elif vc.channel != voice_channel:
+                await vc.move_to(voice_channel)
+                await asyncio.sleep(1)
+            elif not vc.is_connected():
+                vc = await voice_channel.connect()
+                await asyncio.sleep(1)
+            
+            # 檢查連接狀態
+            if not vc or not vc.is_connected():
+                raise Exception("無法連接到語音頻道")
+            
+            # 生成音頻文件路徑
+            audio_file = f"/tmp/tts_{ctx.author.id}_{int(asyncio.get_event_loop().time())}.mp3"
+            
+            # 使用 espeak 生成語音並轉換為 MP3
+            try:
+                # 先生成 WAV
+                wav_file = audio_file.replace('.mp3', '.wav')
+                subprocess.run(['espeak', '-w', wav_file, text], timeout=5, check=True, capture_output=True)
+                
+                # 轉換為 MP3（更相容）
+                subprocess.run(['ffmpeg', '-y', '-i', wav_file, '-q:a', '9', audio_file], 
+                             timeout=10, check=True, capture_output=True)
+                
+                # 清理 WAV
+                try:
+                    os.remove(wav_file)
+                except:
+                    pass
+            except Exception as e:
+                raise Exception(f"音頻生成失敗: {str(e)}")
             
             # 檢查文件是否生成
             if not os.path.exists(audio_file) or os.path.getsize(audio_file) == 0:
                 raise Exception("音頻文件生成失敗")
             
-            # 連接到語音頻道
-            voice_channel = ctx.author.voice.channel
-            vc = ctx.voice_client
-            
-            # 如果機器人還未連接，連接到語音頻道
-            if vc is None:
-                try:
-                    vc = await voice_channel.connect()
-                    await asyncio.sleep(1)  # 等待連接建立
-                except discord.ClientException:
-                    # 已經連接，獲取當前連接
-                    vc = ctx.voice_client
-            # 如果機器人在不同頻道，移動過去
-            elif vc.channel != voice_channel:
-                try:
-                    await vc.move_to(voice_channel)
-                    await asyncio.sleep(1)
-                except discord.ClientException:
-                    pass
+            # 停止正在播放的音頻
+            if vc.is_playing():
+                vc.stop()
+                await asyncio.sleep(0.5)
             
             # 播放音頻
             source = discord.FFmpegPCMAudio(audio_file)
-            vc.play(source, after=lambda e: None)
+            vc.play(source, after=lambda e: None if e is None else print(f"播放錯誤: {e}"))
             
             embed = discord.Embed(
                 title="🎙️ 正在播放文字轉語音",
@@ -559,19 +575,12 @@ def setup_commands(bot):
             await ctx.send(embed=embed)
             
             # 等待播放完成後清理
-            await asyncio.sleep(8)
+            await asyncio.sleep(12)
             try:
                 os.remove(audio_file)
             except:
                 pass
         
-        except FileNotFoundError:
-            embed = discord.Embed(
-                title="❌ 系統缺少文字轉語音工具",
-                description="espeak 工具未安裝",
-                color=0xff0000
-            )
-            await ctx.send(embed=embed)
         except Exception as e:
             embed = discord.Embed(
                 title="❌ 文字轉語音失敗",
