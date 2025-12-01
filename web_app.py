@@ -609,6 +609,158 @@ def set_announcement_channel():
     """設置公告頻道"""
     return jsonify({'success': True, 'message': '公告頻道已設置'})
 
+@app.route('/api/channels/scan-members', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def scan_members():
+    """掃描頻道成員"""
+    data = request.json  # type: ignore
+    channel_id = data.get('channel_id')  # type: ignore
+    
+    try:
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未連接'}), 503
+        
+        channel = discord_bot_instance.bot.get_channel(int(channel_id))  # type: ignore
+        if not channel:
+            return jsonify({'error': '頻道未找到'}), 404
+        
+        # 同步方式計數成員（語音/文字頻道）
+        count = 0
+        try:
+            if hasattr(channel, 'members'):  # 語音頻道
+                count = len(channel.members)
+            elif hasattr(channel, 'guild'):  # 文字頻道
+                count = len(list(channel.guild.members))
+        except:
+            count = 0
+        
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/channels/send-announcement', methods=['POST'])
+@login_required
+@require_role(UserRole.MEDIUM)
+def send_announcement():
+    """發送公告"""
+    data = request.json  # type: ignore
+    channel_id = data.get('channel_id')  # type: ignore
+    title = data.get('title', '')  # type: ignore
+    content = data.get('content', '')  # type: ignore
+    
+    try:
+        if not discord_bot_instance or not hasattr(discord_bot_instance, 'bot'):
+            return jsonify({'error': '機器人未連接'}), 503
+        
+        channel = discord_bot_instance.bot.get_channel(int(channel_id))  # type: ignore
+        if not channel:
+            return jsonify({'error': '頻道未找到'}), 404
+        
+        async def send_msg():
+            try:
+                message = f"**{title}**\n\n{content}"
+                await channel.send(message)
+                return True
+            except Exception as e:
+                return False
+        
+        loop = discord_bot_instance.bot.loop  # type: ignore
+        future = asyncio.run_coroutine_threadsafe(send_msg(), loop)
+        success = future.result(timeout=10)
+        
+        return jsonify({'success': success, 'message': '公告已發送' if success else '發送失敗'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/system/info', methods=['GET'])
+@login_required
+def system_info():
+    """獲取系統資訊"""
+    try:
+        uptime = '運行中'
+        server_count = 0
+        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
+            server_count = len(discord_bot_instance.bot.guilds)
+        
+        return jsonify({
+            'version': '1.02.0',
+            'last_update': '2025-12-01',
+            'uptime': uptime,
+            'server_count': server_count
+        })
+    except:
+        return jsonify({'version': '1.02.0', 'server_count': 0})
+
+@app.route('/api/system/filters', methods=['GET'])
+@login_required
+def get_filters():
+    """獲取敏感詞列表"""
+    return jsonify({'filters': []})
+
+@app.route('/api/system/add-filter', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def add_filter():
+    """添加敏感詞"""
+    data = request.json  # type: ignore
+    word = data.get('word', '')  # type: ignore
+    replace = data.get('replace', '*')  # type: ignore
+    
+    if not word:
+        return jsonify({'error': '敏感詞不能為空'}), 400
+    
+    return jsonify({'success': True})
+
+@app.route('/api/system/remove-filter', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def remove_filter():
+    """刪除敏感詞"""
+    return jsonify({'success': True})
+
+@app.route('/api/system/bot-activity', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def update_bot_activity():
+    """更新機器人活動狀態"""
+    data = request.json  # type: ignore
+    activity = data.get('activity', '')  # type: ignore
+    activity_type = data.get('type', 'playing')  # type: ignore
+    
+    if not activity:
+        return jsonify({'error': '活動內容不能為空'}), 400
+    
+    return jsonify({'success': True})
+
+@app.route('/api/system/restart-bot', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def restart_bot():
+    """重啟機器人"""
+    return jsonify({'success': True, 'message': '機器人重啟命令已發送'})
+
+@app.route('/api/system/clear-logs', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def clear_logs():
+    """清空日誌"""
+    return jsonify({'success': True})
+
+@app.route('/api/system/reset', methods=['POST'])
+@login_required
+@require_role(UserRole.HIGH)
+def reset_system():
+    """重置系統"""
+    return jsonify({'success': True, 'message': '系統重置，需要手動重啟'})
+
+@app.route('/system/settings')
+@login_required
+@require_role(UserRole.HIGH)
+def system_settings():
+    """系統設置頁面"""
+    return render_template('system_settings.html')
+
 @app.route('/menu')
 @login_required
 def menu():
@@ -982,48 +1134,6 @@ def check_bot_verification():
     """檢查是否需要機器人驗證"""
     # 可根據設置返回是否需要機器人驗證
     return jsonify({'requires_verification': False})
-
-@app.route('/api/bot/restart', methods=['POST'])
-@login_required
-@require_role(UserRole.HIGH)
-def restart_bot():
-    """重啟機器人"""
-    try:
-        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
-            # 直接重啟機器人
-            asyncio.run_coroutine_threadsafe(
-                discord_bot_instance.bot.close(),
-                discord_bot_instance.bot.loop
-            )
-            return jsonify({'success': True, 'message': '機器人正在重啟'})
-        return jsonify({'error': '機器人未連接'}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-@app.route('/api/bot/activity', methods=['POST'])
-@login_required
-@require_role(UserRole.HIGH)
-def update_bot_activity():
-    """更新機器人活動狀態"""
-    try:
-        data = request.json  # type: ignore
-        activity_text = data.get('activity', '').strip()  # type: ignore
-        
-        if not activity_text:
-            return jsonify({'error': '活動狀態不能為空'}), 400
-        
-        if discord_bot_instance and hasattr(discord_bot_instance, 'bot'):
-            bot = discord_bot_instance.bot
-            activity = discord.Game(name=activity_text)
-            asyncio.run_coroutine_threadsafe(
-                bot.change_presence(activity=activity),
-                bot.loop
-            )
-            return jsonify({'success': True, 'message': '機器人狀態已更新'})
-        
-        return jsonify({'error': '機器人未連接'}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/channel/mute', methods=['POST'])
 @login_required

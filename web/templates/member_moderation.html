@@ -25,7 +25,28 @@
 <div class="tab-content">
     <!-- 成員列表 -->
     <div class="tab-pane fade show active" id="members">
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <h5>自動掃描成員</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <label for="scanChannel" class="form-label">選擇頻道</label>
+                        <select class="form-control" id="scanChannel"></select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-info w-100" onclick="scanMembers()">
+                            <i class="fas fa-search"></i> 掃描成員
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>成員列表</h5>
+            </div>
             <div class="card-body">
                 <table class="table" id="membersTable">
                     <thead>
@@ -83,25 +104,74 @@
 </div>
 
 <script>
-// 載入成員列表
-fetch('/api/members/list')
+// 載入頻道列表用於掃描
+fetch('/api/bot/channels')
     .then(res => res.json())
     .then(data => {
-        const tbody = document.querySelector('#membersTable tbody');
-        const select = document.getElementById('memberSelect');
-        if (data.members) {
-            data.members.forEach(member => {
-                const row = tbody.insertRow();
-                const joinDate = new Date(member.joined_at).toLocaleDateString('zh-TW');
-                row.innerHTML = `<td>${member.name}</td><td>${joinDate}</td><td>${member.roles.join(', ')}</td><td><button class="btn btn-sm btn-info">詳情</button></td>`;
-                
+        const select = document.getElementById('scanChannel');
+        if (data.channels) {
+            data.channels.forEach(ch => {
                 const option = document.createElement('option');
-                option.value = member.id;
-                option.textContent = member.name;
+                option.value = ch.id;
+                option.textContent = ch.name;
                 select.appendChild(option);
             });
         }
     });
+
+// 載入初始成員列表
+loadMembersList();
+
+function loadMembersList() {
+    fetch('/api/members/list')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#membersTable tbody');
+            const select = document.getElementById('memberSelect');
+            tbody.innerHTML = '';
+            select.innerHTML = '<option value="">-- 選擇成員 --</option>';
+            
+            if (data.members) {
+                data.members.forEach(member => {
+                    const row = tbody.insertRow();
+                    const joinDate = new Date(member.joined_at).toLocaleDateString('zh-TW');
+                    row.innerHTML = `<td>${member.name}</td><td>${joinDate}</td><td>${member.roles.join(', ')}</td><td><button class="btn btn-sm btn-info">詳情</button></td>`;
+                    
+                    const option = document.createElement('option');
+                    option.value = member.id;
+                    option.textContent = member.name;
+                    select.appendChild(option);
+                });
+            }
+        });
+}
+
+function scanMembers() {
+    const channelId = document.getElementById('scanChannel').value;
+    if (!channelId) {
+        alert('請選擇頻道');
+        return;
+    }
+    
+    fetch('/api/channels/scan-members', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({channel_id: channelId})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(`成功掃描 ${data.count || 0} 個成員！`);
+            loadMembersList();
+        } else {
+            alert('掃描失敗：' + (data.error || '未知錯誤'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('掃描出錯');
+    });
+}
 
 // 控制禁言時長顯示
 document.getElementById('actionType').addEventListener('change', function() {
