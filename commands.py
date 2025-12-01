@@ -501,27 +501,23 @@ def setup_commands(bot):
             return
         
         # 檢查訊息長度
-        if len(text) > 500:
+        if len(text) > 200:
             embed = discord.Embed(
                 title="❌ 文字太長",
-                description="文字不能超過500個字符",
+                description="文字不能超過200個字符",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
             return
         
         try:
-            import pyttsx3
+            from gtts import gTTS
             import os
             
-            # 初始化 TTS 引擎
-            engine = pyttsx3.init()
-            engine.setProperty('rate', 150)  # 說話速度
-            
-            # 生成音頻文件
+            # 使用Google Text-to-Speech生成音頻
+            tts = gTTS(text=text, lang='zh-TW', slow=False)
             audio_file = f"/tmp/tts_{ctx.author.id}.mp3"
-            engine.save_to_file(text, audio_file)
-            engine.runAndWait()
+            tts.save(audio_file)
             
             # 連接到語音頻道並播放
             voice_channel = ctx.author.voice.channel
@@ -535,7 +531,7 @@ def setup_commands(bot):
             # 播放音頻
             if os.path.exists(audio_file):
                 source = discord.FFmpegPCMAudio(audio_file)
-                vc.play(source, after=lambda e: print(f'播放完成'))
+                vc.play(source, after=lambda e: None)
                 
                 embed = discord.Embed(
                     title="🎙️ 正在播放文字轉語音",
@@ -544,9 +540,9 @@ def setup_commands(bot):
                 )
                 await ctx.send(embed=embed)
                 
-                # 清理臨時文件
+                # 等待播放完成後清理臨時文件
                 import asyncio
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
                 try:
                     os.remove(audio_file)
                 except:
@@ -557,7 +553,7 @@ def setup_commands(bot):
         except ImportError:
             embed = discord.Embed(
                 title="❌ 缺少依賴",
-                description="尚未安裝 pyttsx3 庫，請稍後重試",
+                description="正在安裝文字轉語音庫，請稍後再試",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
