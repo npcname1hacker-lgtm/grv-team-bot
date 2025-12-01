@@ -513,6 +513,7 @@ def setup_commands(bot):
         try:
             import subprocess
             import os
+            import asyncio
             
             # 生成音頻文件路徑
             audio_file = f"/tmp/tts_{ctx.author.id}.wav"
@@ -528,12 +529,20 @@ def setup_commands(bot):
             
             # 連接到語音頻道
             voice_channel = ctx.author.voice.channel
-            if ctx.voice_client is None:
+            vc = ctx.voice_client
+            
+            # 如果機器人還未連接，連接到語音頻道
+            if vc is None or not vc.is_connected():
                 vc = await voice_channel.connect()
-            else:
-                vc = ctx.voice_client
-                if vc.channel != voice_channel:
-                    await vc.move_to(voice_channel)
+                await asyncio.sleep(1)  # 等待連接建立
+            # 如果機器人在不同頻道，移動過去
+            elif vc.channel != voice_channel:
+                await vc.move_to(voice_channel)
+                await asyncio.sleep(1)
+            
+            # 確保已連接
+            if not vc.is_connected():
+                raise Exception("連接語音頻道失敗")
             
             # 播放音頻
             source = discord.FFmpegPCMAudio(audio_file)
@@ -547,7 +556,6 @@ def setup_commands(bot):
             await ctx.send(embed=embed)
             
             # 等待播放完成後清理
-            import asyncio
             await asyncio.sleep(8)
             try:
                 os.remove(audio_file)
