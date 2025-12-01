@@ -26,6 +26,7 @@ class DiscordBot:
         intents.guilds = True
         intents.guild_messages = True
         intents.voice_states = True
+        intents.members = True  # 必須啟用才能訪問成員列表
         
         # 創建機器人實例
         self.bot = commands.Bot(
