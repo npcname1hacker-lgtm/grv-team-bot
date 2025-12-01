@@ -530,6 +530,12 @@ def bot_say():
     except Exception as e:
         return jsonify({'error': f'發送失敗: {str(e)}'}), 500
 
+@app.route('/menu')
+@login_required
+def menu():
+    """功能菜單頁面 - 三個獨立的菜單區域"""
+    return render_template('menu.html')
+
 @app.route('/settings')
 @login_required
 def settings():
