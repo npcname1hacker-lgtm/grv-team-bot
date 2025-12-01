@@ -50,34 +50,24 @@
 </div>
 
 <!-- ═══════════════════════════════════════ -->
-<!-- 菜單 1: 基本資訊與查詢 -->
+<!-- 菜單 1: 機器人功能 -->
 <!-- ═══════════════════════════════════════ -->
 <div class="row mb-4">
     <div class="col">
         <div class="card border-primary">
             <div class="card-header bg-primary text-white">
-                <h5><i class="fas fa-info-circle"></i> 📚 基本資訊與查詢</h5>
+                <h5><i class="fas fa-robot"></i> 🤖 機器人功能</h5>
             </div>
             <div class="card-body">
                 <div class="row g-2">
-                    <div class="col-md-3">
-                        <a href="{{ url_for('bot_control') }}" class="btn btn-outline-primary w-100">
-                            <i class="fas fa-robot"></i><br><small>機器人狀態</small>
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-primary w-100" onclick="alert('伺服器資訊查詢')">
-                            <i class="fas fa-server"></i><br><small>伺服器資訊</small>
+                    <div class="col-md-5">
+                        <button class="btn btn-outline-primary w-100" onclick="alert('機器人說話功能')">
+                            <i class="fas fa-microphone"></i><br><small>機器人說話</small>
                         </button>
                     </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-primary w-100" onclick="alert('成員列表')">
-                            <i class="fas fa-users"></i><br><small>成員列表</small>
-                        </button>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-primary w-100" onclick="alert('系統資訊')">
-                            <i class="fas fa-info"></i><br><small>系統資訊</small>
+                    <div class="col-md-5">
+                        <button class="btn btn-outline-primary w-100" onclick="alert('機器人狀態檢查')">
+                            <i class="fas fa-heartbeat"></i><br><small>機器人狀態</small>
                         </button>
                     </div>
                 </div>
@@ -87,32 +77,37 @@
 </div>
 
 <!-- ═══════════════════════════════════════ -->
-<!-- 菜單 2: 通用工具 -->
+<!-- 菜單 2: 頻道與申請管理 -->
 <!-- ═══════════════════════════════════════ -->
 <div class="row mb-4">
     <div class="col">
         <div class="card border-success">
             <div class="card-header bg-success text-white">
-                <h5><i class="fas fa-tools"></i> 🔧 通用工具</h5>
+                <h5><i class="fas fa-comments"></i> 📢 頻道與申請管理</h5>
             </div>
             <div class="card-body">
                 <div class="row g-2">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-success w-100" onclick="alert('語音頻道管理')">
+                            <i class="fas fa-microphone-alt"></i><br><small>語音頻道</small>
+                        </button>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-success w-100" onclick="alert('文字頻道管理')">
+                            <i class="fas fa-comments"></i><br><small>文字頻道</small>
+                        </button>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-success w-100" onclick="alert('公告頻道')">
+                            <i class="fas fa-megaphone"></i><br><small>公告頻道</small>
+                        </button>
+                    </div>
+                    <div class="col-md-2">
                         <a href="{{ url_for('applications') }}" class="btn btn-outline-success w-100">
                             <i class="fas fa-clipboard-list"></i><br><small>申請管理</small>
                         </a>
                     </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-success w-100" onclick="alert('清除訊息')">
-                            <i class="fas fa-trash"></i><br><small>清除訊息</small>
-                        </button>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-success w-100" onclick="alert('發布公告')">
-                            <i class="fas fa-megaphone"></i><br><small>發布公告</small>
-                        </button>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <a href="{{ url_for('settings') }}" class="btn btn-outline-success w-100">
                             <i class="fas fa-cog"></i><br><small>個人設置</small>
                         </a>
