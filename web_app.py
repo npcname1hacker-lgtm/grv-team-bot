@@ -571,7 +571,9 @@ def change_password():
     web_db, _ = get_databases()
     success = web_db.change_user_password(current_user.id, new_password)
     if success:
-        return jsonify({'success': True, 'message': '密碼已更新'})
+        # 改密碼後自動登出，強制重新登入
+        logout_user()
+        return jsonify({'success': True, 'message': '密碼已更新，請重新登入', 'require_relogin': True})
     else:
         return jsonify({'error': '更新失敗'}), 400
 
