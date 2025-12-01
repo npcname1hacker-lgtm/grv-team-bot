@@ -501,25 +501,32 @@ def setup_commands(bot):
             return
         
         # 檢查訊息長度
-        if len(text) > 200:
+        if len(text) > 100:
             embed = discord.Embed(
                 title="❌ 文字太長",
-                description="文字不能超過200個字符",
+                description="文字不能超過100個字符",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
             return
         
         try:
-            from gtts import gTTS
+            import subprocess
             import os
             
-            # 使用Google Text-to-Speech生成音頻
-            tts = gTTS(text=text, lang='zh-TW', slow=False)
-            audio_file = f"/tmp/tts_{ctx.author.id}.mp3"
-            tts.save(audio_file)
+            # 生成音頻文件路徑
+            audio_file = f"/tmp/tts_{ctx.author.id}.wav"
             
-            # 連接到語音頻道並播放
+            # 使用 espeak 生成語音（Linux 系統工具）
+            cmd = ['espeak', '-w', audio_file, text]
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process.wait(timeout=10)
+            
+            # 檢查文件是否生成
+            if not os.path.exists(audio_file) or os.path.getsize(audio_file) == 0:
+                raise Exception("音頻文件生成失敗")
+            
+            # 連接到語音頻道
             voice_channel = ctx.author.voice.channel
             if ctx.voice_client is None:
                 vc = await voice_channel.connect()
@@ -529,31 +536,28 @@ def setup_commands(bot):
                     await vc.move_to(voice_channel)
             
             # 播放音頻
-            if os.path.exists(audio_file):
-                source = discord.FFmpegPCMAudio(audio_file)
-                vc.play(source, after=lambda e: None)
-                
-                embed = discord.Embed(
-                    title="🎙️ 正在播放文字轉語音",
-                    description=f"**內容:** {text}",
-                    color=0x00ff00
-                )
-                await ctx.send(embed=embed)
-                
-                # 等待播放完成後清理臨時文件
-                import asyncio
-                await asyncio.sleep(10)
-                try:
-                    os.remove(audio_file)
-                except:
-                    pass
-            else:
-                raise Exception("無法生成音頻文件")
-        
-        except ImportError:
+            source = discord.FFmpegPCMAudio(audio_file)
+            vc.play(source, after=lambda e: None)
+            
             embed = discord.Embed(
-                title="❌ 缺少依賴",
-                description="正在安裝文字轉語音庫，請稍後再試",
+                title="🎙️ 正在播放文字轉語音",
+                description=f"**內容:** {text}",
+                color=0x00ff00
+            )
+            await ctx.send(embed=embed)
+            
+            # 等待播放完成後清理
+            import asyncio
+            await asyncio.sleep(8)
+            try:
+                os.remove(audio_file)
+            except:
+                pass
+        
+        except FileNotFoundError:
+            embed = discord.Embed(
+                title="❌ 系統缺少文字轉語音工具",
+                description="espeak 工具未安裝",
                 color=0xff0000
             )
             await ctx.send(embed=embed)
