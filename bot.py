@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 import logging
 import os
-import lavalink
+import wavelink
 from config import Config
 from commands import setup_commands
 from application_system import setup_application_system
@@ -48,14 +48,22 @@ class DiscordBot:
         # 嘗試初始化 Lavalink
         self.setup_lavalink()
     
-    def setup_lavalink(self):
-        """初始化 Lavalink 連接"""
+    async def setup_lavalink(self):
+        """初始化 Wavelink (Lavalink) 連接"""
         try:
-            # Lavalink 會在首次使用時自動初始化
-            # 這裡只是設置相關配置
-            self.logger.info("✅ Lavalink 模組已加載，準備在需要時連接")
+            # Wavelink 會自動連接到 Lavalink
+            # 在 Wispbyte 部署時，使用以下連接方式：
+            lavalink_url = os.getenv('LAVALINK_URL', 'http://localhost:2333')
+            lavalink_password = os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
+            
+            # 創建 Lavalink 節點
+            node = wavelink.Node(uri=lavalink_url, password=lavalink_password)
+            
+            # 使用 on_ready 連接，不在初始化時連接
+            self.logger.info(f"✅ Wavelink 已配置，將在機器人準備就緒時連接到 {lavalink_url}")
+            
         except Exception as e:
-            self.logger.warning(f"⚠️ Lavalink 初始化警告: {str(e)}")
+            self.logger.warning(f"⚠️ Wavelink 初始化警告: {str(e)}")
     
     def setup_events(self):
         """設置機器人事件處理器"""
@@ -70,6 +78,20 @@ class DiscordBot:
             # 設置機器人狀態
             activity = discord.Game(name=self.config.BOT_STATUS)
             await self.bot.change_presence(status=discord.Status.online, activity=activity)
+            
+            # 連接 Wavelink (Lavalink)
+            try:
+                lavalink_url = os.getenv('LAVALINK_URL', 'http://localhost:2333')
+                lavalink_password = os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
+                
+                node = wavelink.Node(uri=lavalink_url, password=lavalink_password)
+                await wavelink.Pool.connect(client=self.bot, nodes=[node])
+                self.logger.info(f"✅ Wavelink 已連接到 {lavalink_url}")
+                self.lavalink_active = True
+                
+            except Exception as e:
+                self.logger.warning(f"⚠️ Wavelink 連接失敗 (音樂功能不可用): {str(e)}")
+                self.lavalink_active = False
             
             # 列出所有連接的伺服器
             for guild in self.bot.guilds:
