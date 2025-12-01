@@ -96,7 +96,7 @@
 
 <script>
 // 載入文字頻道
-fetch('/api/channels/text-channels')
+fetch('/api/bot/channels')
     .then(res => res.json())
     .then(data => {
         const tbody = document.querySelector('#textChannelsTable tbody');
@@ -104,28 +104,30 @@ fetch('/api/channels/text-channels')
         if (data.channels) {
             data.channels.forEach(ch => {
                 const row = tbody.insertRow();
-                row.innerHTML = `<td>#${ch.name}</td><td>${ch.id}</td><td>${ch.topic || '-'}</td><td><button class="btn btn-sm btn-info">查看</button></td>`;
+                row.innerHTML = `<td>${ch.name}</td><td>${ch.id}</td><td>--</td><td><button class="btn btn-sm btn-info">查看</button></td>`;
                 
                 const option = document.createElement('option');
                 option.value = ch.id;
-                option.textContent = '#' + ch.name;
+                option.textContent = ch.name;
                 select.appendChild(option);
             });
         }
-    });
+    })
+    .catch(err => console.error('載入文字頻道失敗', err));
 
 // 載入語音頻道
-fetch('/api/channels/voice-channels')
+fetch('/api/bot/channels')
     .then(res => res.json())
     .then(data => {
         const tbody = document.querySelector('#voiceChannelsTable tbody');
         if (data.channels) {
             data.channels.forEach(ch => {
                 const row = tbody.insertRow();
-                row.innerHTML = `<td>${ch.name}</td><td>${ch.id}</td><td>${ch.user_limit || '無限'}</td><td>${ch.members_count || 0}</td><td><button class="btn btn-sm btn-info">查看</button></td>`;
+                row.innerHTML = `<td>${ch.name}</td><td>${ch.id}</td><td>--</td><td>0</td><td><button class="btn btn-sm btn-info">查看</button></td>`;
             });
         }
-    });
+    })
+    .catch(err => console.error('載入語音頻道失敗', err));
 
 function setAnnouncementChannel() {
     const channelId = document.getElementById('announcementChannel').value;
