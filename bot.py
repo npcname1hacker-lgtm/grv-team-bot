@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 import logging
 import os
-import wavelink
+import lavalink
 from config import Config
 from commands import setup_commands
 from application_system import setup_application_system
